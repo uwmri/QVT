@@ -118,6 +118,11 @@ MAG = load_dat(fullfile(directory,'MAG.dat'),[matrix(1) matrix(2) matrix(3)]);
 % [~,IDXend(3)] = max(flipud(BIN),[],1); 
 % IDXend(3) = matrix(3) - IDXend(3) + 1; %get last thresh crossing
 
+% % Crop data with new dimensions
+% MAG = MAG(IDXstart(1):IDXend(1),IDXstart(2):IDXend(2),IDXstart(3):IDXend(3));
+% newDIM = size(MAG);
+% clear SUMnumA SUMnumC SUMnumS BIN ans fid
+
 %% Manual Cropping
 % Restricting our analysis to smaller volume
 CD = load_dat(fullfile(directory,'CD.dat'),[matrix(1) matrix(2) matrix(3)]);
@@ -141,7 +146,7 @@ IDXend(1) = pos2(2)+pos2(4);
 % Crop data with new dimensions
 MAG = MAG(IDXstart(1):IDXend(1),IDXstart(2):IDXend(2),IDXstart(3):IDXend(3));
 newDIM = size(MAG);
-clear SUMnumA SUMnumC SUMnumS BIN ans fid CD* mip* rect* pos1 pos2
+clear CD* mip* rect* pos1 pos2
 
 %% Read Average Velocity
 vMean = zeros(newDIM(1),newDIM(2),newDIM(3),3,'single'); 
@@ -183,8 +188,8 @@ timeMIP = calc_angio(MAG, vMean, VENC);
 step = 0.001; %step size for sliding threshold
 UPthresh = 0.8; %max upper threshold when creating Sval curvature plot
 SMf = 10;
-shiftHM_flag = 1; %flag to shift max curvature by FWHM
-medFilt_flag = 1; %flag for median filtering of CD image
+shiftHM_flag = 0; %flag to shift max curvature by FWHM
+medFilt_flag = 0; %flag for median filtering of CD image
 [~,segment] = slidingThreshold(timeMIP,step,UPthresh,SMf,shiftHM_flag,medFilt_flag);
 areaThresh = round(sum(segment(:)).*0.005); %minimum area to keep
 conn = 6; %connectivity (i.e. 6-pt)
