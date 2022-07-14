@@ -155,7 +155,8 @@ end
 %% Create Angio
 % Calculate complex difference angiogram for visualization.
 set(handles.TextUpdate,'String','Creating Angiogram'); drawnow;
-timeMIP = calc_angio(MAG, vMean, VENC);
+CD = load_dat(fullfile(directory,'CD.dat'),[matrix(1) matrix(2) matrix(3)]);
+timeMIP = CD(IDXstart(1):IDXend(1),IDXstart(2):IDXend(2),IDXstart(3):IDXend(3));
 % NOTE: timeMIP is an approximated complex difference image.
 % The result is nearly equivalent to loading 'CD.dat'.
 
@@ -170,6 +171,9 @@ areaThresh = round(sum(segment(:)).*0.005); %minimum area to keep
 conn = 6; %connectivity (i.e. 6-pt)
 segment = bwareaopen(segment,areaThresh,conn); %inverse fill holes
 
+%recalculate angio from data registered to placebo (velocity/MAG)
+timeMIP = calc_angio(MAG, vMean, VENC);
+
 % save raw (cropped) images to imageData structure (for Visual Tool)
 imageData.MAG = MAG;
 imageData.CD = timeMIP; 
@@ -180,7 +184,6 @@ imageData.gating_rr = gating_rr;
 imageData.gating_hr = gating_hr;
 imageData.gating_var = gating_var;
 clear step UPthresh SMf shiftHM_flag medFilt_flag areaThresh conn ans
-
 
 %% Feature Extraction
 % Get trim and create the centerline data
