@@ -143,7 +143,6 @@ if ~BGPCdone
     back(:,:,:,2) = single(evaluate_poly(X,Y,Z,poly_fity));
     back(:,:,:,3) = single(evaluate_poly(X,Y,Z,poly_fitz));
     vMean = vMean - back;
-    BGPCdone = 1;
     clear X Y Z poly_fitx poly_fity poly_fitz range1 range2 range3 temp
 end
 
