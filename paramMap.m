@@ -649,7 +649,6 @@ index_range(index_range<1) = [];
 index_range(index_range>size(branchList,1)) = [];
 index_range(Logical_branch(index_range)) = [];
 
-%%%%%%%%%%%% KMEANS %%%%%%%%%%%%%%
 % Time-averaged data
 area = area_val(index_range);
 area = [area;mean(area);std(area)];
