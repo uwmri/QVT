@@ -67,7 +67,7 @@ Once opened, select 'Load Data'. From the pop-up window, select the folder which
 **IMPORTANT NOTE: Currently, this data must be in a format specific to UW-Madison** \
 From the PCVIPR reconstruction, data may be in .dat format (multiple .dat files of containing 3D volumes of magnitude, complex difference, and velocity data) or in HDF5 format (single file usually named 'Flow.h5'). Both formats can be loaded into the tool with the 'loadpcvipr.m' and 'loadHDF5.m' functions. 
 
-In the near future, we plan to implement functions to load more universal 4D flow data formats (e.g., DICOM series, NIFTI?, or ISMRMRD?) from other institutions into our tool. However, this is currently not possible. If you have data from outside of UW-Madison and would like to use the QVT, please reach out and we can help develop functions to load in this data.
+In the near future, we plan to implement functions to load more universal 4D flow data formats (e.g., DICOM series, NIFTI?, etc) from other institutions into our tool. However, this is currently not possible. If you have data from outside of UW-Madison and would like to use the QVT, please reach out and we can help develop functions to load in this data.
 
 
 ## Additional Resources ##
