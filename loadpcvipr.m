@@ -32,7 +32,11 @@ matrix(1) = pcviprHeader.matrixx; %number of pixels in rows (ASSUMED ISOTROPIC)
 matrix(2) = pcviprHeader.matrixy;
 matrix(3) = pcviprHeader.matrixz;
 VENC = pcviprHeader.VENC;
-BGPCdone = pcviprHeader.automatic_BGPC_flag; %check if BGPC done in recon
+if isfield(pcviprHeader,"automatic_BGPC_flag")
+    BGPCdone = pcviprHeader.automatic_BGPC_flag; %check if BGPC done in recon
+else
+    BGPCdone = 0; %assumes it was done...
+end 
 clear dataArray fid
 
     
@@ -142,7 +146,7 @@ spurLength = 15; %minimum branch length (removes short spurs)
 [~,~,branchList,~] = feature_extraction(sortingCriteria,spurLength,vMean,segment,handles);
 
 % Flow parameter calculation, bulk of code is in paramMap_parameters.m
-SEG_TYPE = 'kmeans'; %kmeans or thresh
+SEG_TYPE = 'thresh'; %kmeans or thresh
 if strcmp(SEG_TYPE,'kmeans')
     [area_val,diam_val,flowPerHeartCycle_val,maxVel_val,PI_val,RI_val,flowPulsatile_val,...
         velMean_val,VplanesAllx,VplanesAlly,VplanesAllz,r,timeMIPcrossection,segmentFull,...
