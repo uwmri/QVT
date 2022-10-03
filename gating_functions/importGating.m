@@ -141,6 +141,9 @@ if isGatingTrack
     scatter(time,gatingTrack.early,35,'filled','yellow'); %fill in points with yellow if early trig
     xlabel('Time (s)'); 
     ylabel('RR Interval (ms)');
+    if upperLim(1)<2200 && lowerLim(1)>500
+        ylim([500 2200]);
+    end 
     legend('2\sigma limits','Mean RR','Recon RR','ECG/PG RR-intervals','Outliers', ...
         'Likely Missed HBs','Likely Early Triggers','Location','eastoutside');
     savefig(hFig,'gatingTrack_resp_ecg_waveforms'); % save this figure
