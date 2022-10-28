@@ -1,12 +1,25 @@
 function [area_val,diam_val,flowPerHeartCycle_val,maxVel_val,PI_val,RI_val,flowPulsatile_val,...
     velMean_val,VplanesAllx,VplanesAlly,VplanesAllz,r,timeMIPcrossection,segmentFull,...
     vTimeFrameave,MAGcrossection,bnumMeanFlow,bnumStdvFlow,StdvFromMean,Planes] ...
-    = paramMap_params_new(filetype,branchList,matrix,timeMIP,vMean,back,...
-    BGPCdone,directory,nframes,res,MAG,IDXstart,IDXend,handles)
+    = paramMap_params_new(varargin)
 %PARAMMAP_PARAMS_NEW: Create tangent planes and calculate hemodynamics
 %   Based on a sliding threshold segmentation algorithm developed by Carson Hoffman
-%   Used by: loadpcvipr.m
 %   Dependencies: slidingThreshold.m
+
+%% Argument Inputs
+filetype = varargin{1};
+branchList = varargin{2};
+matrix = varargin{3};
+timeMIP = varargin{4};
+vMean = varargin{5};
+back = varargin{6};
+BGPCdone = varargin{7};
+directory = varargin{8};
+nframes = varargin{9};
+res = varargin{10};
+MAG = varargin{11};
+handles = varargin{12};
+v = varargin{13};
 
 %% Tangent Plane Creation
 set(handles.TextUpdate,'String','Creating Tangent Planes');drawnow;
@@ -190,7 +203,7 @@ for n = 1:size(Tangent_V,1)
     conn = 6; %connectivity (i.e. 6-pt)
     segment = bwareaopen(segment,areaThresh,conn); %inverse fill holes
     % Can compare in-plane segmentation to initial global segmentation. 
-    % To do this, the 'segment' variable from 'loadpcvipr' needs to be 
+    % To do this, the 'segment' variable from 'load*' needs to be 
     % passed as an arg. I did this by adding 'segment_old' as 2nd input
     %segment_old = interp3(y,x,z,single(segment_old),y_full(:),x_full(:),z_full(:),'linear',0);
     %segment_old = reshape(segment_old,[length(branchList),(width).^2]);
@@ -272,7 +285,17 @@ for j = 1:nframes
             vy = vy - back(:,:,:,2);
             vz = vz - back(:,:,:,3);
         end 
-        
+        %use for flow python
+        % Load x,y,z components of velocity (cropped) - single frame
+%         vx = h5read(fullfile(directory,'Flow.h5'),'/VX', ... 
+%             [IDXstart(1),IDXstart(2),IDXstart(3),j], ...
+%             [IDXend(1)-IDXstart(1)+1,IDXend(2)-IDXstart(2)+1,IDXend(3)-IDXstart(3)+1,1]);
+%         vy = h5read(fullfile(directory,'Flow.h5'),'/VY', ... 
+%             [IDXstart(1),IDXstart(2),IDXstart(3),j], ...
+%             [IDXend(1)-IDXstart(1)+1,IDXend(2)-IDXstart(2)+1,IDXend(3)-IDXstart(3)+1,1]);
+%         vz = h5read(fullfile(directory,'Flow.h5'),'/VZ', ... 
+%             [IDXstart(1),IDXstart(2),IDXstart(3),j], ...
+%             [IDXend(1)-IDXstart(1)+1,IDXend(2)-IDXstart(2)+1,IDXend(3)-IDXstart(3)+1,1]);    
     elseif strcmp(filetype,'hdf5')
         set(handles.TextUpdate,'String',['Calculating Quantitative - Parameters Time Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
         xvel_label = append('/Data/',['ph_' num2str(j-1,'%03i') '_vd_1']);
@@ -296,6 +319,10 @@ for j = 1:nframes
             vy = vy - back(:,:,:,2);
             vz = vz - back(:,:,:,3);
         end
+    elseif strcmp(filetype,'dcm')
+        vx = squeeze(v(:,:,:,1,j));
+        vy = squeeze(v(:,:,:,2,j));
+        vz = squeeze(v(:,:,:,3,j));
     else
         set(handles.TextUpdate,'String',['Calculating Quantitative (python H5 export) - Parameters Time Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
         % use for flow python
@@ -318,17 +345,6 @@ for j = 1:nframes
         end     
         
     end 
-        %use for flow python
-        % Load x,y,z components of velocity (cropped) - single frame
-%         vx = h5read(fullfile(directory,'Flow.h5'),'/VX', ... 
-%             [IDXstart(1),IDXstart(2),IDXstart(3),j], ...
-%             [IDXend(1)-IDXstart(1)+1,IDXend(2)-IDXstart(2)+1,IDXend(3)-IDXstart(3)+1,1]);
-%         vy = h5read(fullfile(directory,'Flow.h5'),'/VY', ... 
-%             [IDXstart(1),IDXstart(2),IDXstart(3),j], ...
-%             [IDXend(1)-IDXstart(1)+1,IDXend(2)-IDXstart(2)+1,IDXend(3)-IDXstart(3)+1,1]);
-%         vz = h5read(fullfile(directory,'Flow.h5'),'/VZ', ... 
-%             [IDXstart(1),IDXstart(2),IDXstart(3),j], ...
-%             [IDXend(1)-IDXstart(1)+1,IDXend(2)-IDXstart(2)+1,IDXend(3)-IDXstart(3)+1,1]);
     
     % Interpolation of time-resolved velocities
     v1 = interp3(y,x,z,vx,y_full(:),x_full(:),z_full(:),'linear',0);

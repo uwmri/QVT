@@ -1,11 +1,24 @@
 function [area_val,diam_val,flowPerHeartCycle_val,maxVel_val,PI_val,RI_val,flowPulsatile_val,...
     velMean_val,VplanesAllx,VplanesAlly,VplanesAllz,r,timeMIPcrossection,segmentFull,...
     vTimeFrameave,MAGcrossection,bnumMeanFlow,bnumStdvFlow,StdvFromMean,Planes] ...
-    = paramMap_params_kmeans(filetype,branchList,matrix,timeMIP,vMean,back,...
-    BGPCdone,directory,nframes,res,MAG,IDXstart,IDXend,handles)
+    = paramMap_params_kmeans(varargin)
 %PARAMMAP_PARAMS_NEW: Create tangent planes and calculate hemodynamics
 %   Based on a k-means segmentation algorithm implemented by Eric Schrauben
-%   Used by: loadpcvipr.m
+
+%% Argument Inputs
+filetype = varargin{1};
+branchList = varargin{2};
+matrix = varargin{3};
+timeMIP = varargin{4};
+vMean = varargin{5};
+back = varargin{6};
+BGPCdone = varargin{7};
+directory = varargin{8};
+nframes = varargin{9};
+res = varargin{10};
+MAG = varargin{11};
+handles = varargin{12};
+v = varargin{13};
 
 %% Tangent Plane Creation
 set(handles.TextUpdate,'String','Creating Tangent Planes');drawnow;
@@ -17,13 +30,13 @@ for n = 1:max(branchList(:,4))
     for i = 1:size(branchActual,1)
         % Extract normal to cross-section
         if i < d+1 %if near 1st endpoint
-            dir = (branchActual(i+d,1:3) - branchActual(i,1:3));
+            Dir = (branchActual(i+d,1:3) - branchActual(i,1:3));
         elseif i >= size(branchActual,1)-d %if near 2nd endpoint 
-            dir = (branchActual(i,1:3) - branchActual(i-d,1:3));
+            Dir = (branchActual(i,1:3) - branchActual(i-d,1:3));
         else %calculate tangent from d points ahead/behind curr point
-            dir = (branchActual(i+d,1:3) - branchActual(i-d,1:3));
+            Dir = (branchActual(i+d,1:3) - branchActual(i-d,1:3));
         end
-        dir_temp(i,:) = dir/norm(dir); %tangent vector with magnitude of 1
+        dir_temp(i,:) = Dir/norm(Dir); %tangent vector with magnitude of 1
     end
     Tangent_V = [Tangent_V;dir_temp]; %add all tangents to large list
 end
@@ -311,6 +324,10 @@ for j = 1:nframes
 %         vz = h5read(fullfile(directory,'Flow.h5'),'/VZ', ... 
 %             [IDXstart(1),IDXstart(2),IDXstart(3),j], ...
 %             [IDXend(1)-IDXstart(1)+1,IDXend(2)-IDXstart(2)+1,IDXend(3)-IDXstart(3)+1,1]);
+    elseif strcmp(filetype,'dcm')
+        vx = squeeze(v(:,:,:,1,j));
+        vy = squeeze(v(:,:,:,2,j));
+        vz = squeeze(v(:,:,:,3,j));
     else % for python .h5 export 
         set(handles.TextUpdate,'String',['Calculating Quantitative (python H5 export) - Parameters Time Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
         % use for flow python
