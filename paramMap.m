@@ -23,7 +23,7 @@ function varargout = paramMap(varargin)
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 % Edit the above text to modify the response to help paramMap
-% Last Modified by GUIDE v2.5 05-Feb-2022 08:20:40
+% Last Modified by GUIDE v2.5 29-Oct-2022 09:41:40
 
 % Developed by Carson Hoffman and Grant Roberts
 % University of Wisconsin-Madison 2019
@@ -1155,3 +1155,38 @@ function ParameterTool_CloseRequestFcn(hObject, eventdata, handles)
 % Hint: delete(hObject) closes the figure
 delete(hObject);
 
+
+
+% --- Executes on button press in calcPWV.
+function calcPWV_Callback(hObject, eventdata, handles)
+% hObject    handle to calcPWV (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global branchList res timeres flowPulsatile_val SavePath 
+
+pwvTool(branchList,res,timeres,flowPulsatile_val,SavePath);
+
+
+% --- Executes during object deletion, before destroying properties.
+function calcPWV_DeleteFcn(hObject, eventdata, handles)
+% hObject    handle to calcPWV (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+delete(hObject);
+
+
+% --- Executes on button press in calcTCD.
+function calcTCD_Callback(hObject, eventdata, handles)
+% hObject    handle to calcTCD (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global branchList res timeres flowPulsatile_val SavePath 
+
+pwvTool(branchList,res,timeres,flowPulsatile_val,SavePath);
+
+% --- Executes during object deletion, before destroying properties.
+function calcTCD_DeleteFcn(hObject, eventdata, handles)
+% hObject    handle to calcTCD (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+delete(hObject);
