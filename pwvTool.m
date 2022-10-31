@@ -527,5 +527,3 @@ function [sigmoid,t,t1] = sigFit(meanROI,times)
     curvature = ddy.*dx./(dx.^2 + dy.^2).^(3/2);
     [~,tIdx] = max(curvature);
     t1 = t(tIdx);
-    
-    
