@@ -390,11 +390,11 @@ ttf1 = -p(2)/p(1); %y=0 intercept
 % nothing needed here
 
 % Wavelet 
-dT = 0.001;
-PAD = 1;
-DERIV = 4;
-[y1,PERIOD,~,~,~,~,~] = contwt(wave1,dT,PAD,[],[],[],'dog',DERIV);
-f1 = 1./PERIOD;
+%dT = 0.001;
+%PAD = 1;
+%DERIV = 4;
+%[y1,PERIOD,~,~,~,~,~] = contwt(wave1,dT,PAD,[],[],[],'dog',DERIV);
+%f1 = 1./PERIOD;
 
 %% Get Second Curves
 for w = 2:size(waveforms,1) % loop over all flow curves
