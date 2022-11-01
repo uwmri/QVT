@@ -188,7 +188,7 @@ else %Load in pcvipr data from scratch
         = loadpcvipr(directory,handles); 
     end 
     
-    % directory = uigetdir; %select saving dir 
+    directory = uigetdir; %select saving dir 
     % Save all variables needed to run parametertool. This will be used
     % later to load in data faster instead of having to reload all data.
     % Save data_structure with time/version-stamped filename in 'directory'
