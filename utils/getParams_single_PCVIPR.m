@@ -65,12 +65,12 @@ mri_loc = info.InstitutionName;
     
 mris = {now scan_date mri_loc};
 flows =  num2cell([TCBF FLOW PULSATILITY RESISTIVITY AREA MEAN_V]);
-params = {mris{:} flows{:} temp_res};
+params = {mris{:} flows{:}};
 cd(basedir);
 
 clear area AREA basedir coil DATA dataDir ddd flow FLOW info mean_v MEAN_V
-clean mri_loc now num pulsatility PULSATILITY raw resistivity RESISTIVITY 
-clean saveOrder scan_date TCBF txt vesselNames rrInt
+clear mri_loc now num pulsatility PULSATILITY raw resistivity RESISTIVITY 
+clear saveOrder scan_date TCBF txt vesselNames rrInt mris flows
 
 
 function param = getParams(vesselNames,col)
