@@ -58,14 +58,15 @@ if isempty(ddd)
         ddd = dir('*dcm');
     end 
 end 
-info = dicominfo(ddd(1).name);
-scan_date = info.FileModDate;
-mri_loc = info.InstitutionName;
+%info = dicominfo(ddd(1).name);
+%scan_date = info.FileModDate;
+%mri_loc = info.InstitutionName;
 %coil = info.ReceiveCoilName;
     
-mris = {now scan_date mri_loc};
+%mris = {now scan_date mri_loc};
 flows =  num2cell([TCBF FLOW PULSATILITY RESISTIVITY AREA MEAN_V]);
-params = {mris{:} flows{:}};
+params = flows;
+%params = {mris{:} flows{:}};
 cd(basedir);
 
 clear area AREA basedir coil DATA dataDir ddd flow FLOW info mean_v MEAN_V
