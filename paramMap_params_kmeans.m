@@ -277,7 +277,7 @@ for j = 1:nframes
         end 
         
     elseif strcmp(filetype,'hdf5')
-        set(handles.TextUpdate,'String',['Calculating Quantitative - Parameters Time Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
+        set(handles.TextUpdate,'String',['Calculating Quantitative Params Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
         xvel_label = append('/Data/',['ph_' num2str(j-1,'%03i') '_vd_1']);
         yvel_label = append('/Data/',['ph_' num2str(j-1,'%03i') '_vd_2']);
         zvel_label = append('/Data/',['ph_' num2str(j-1,'%03i') '_vd_3']);
@@ -312,7 +312,7 @@ for j = 1:nframes
 %             [IDXstart(1),IDXstart(2),IDXstart(3),j], ...
 %             [IDXend(1)-IDXstart(1)+1,IDXend(2)-IDXstart(2)+1,IDXend(3)-IDXstart(3)+1,1]);
     else % for python .h5 export 
-        set(handles.TextUpdate,'String',['Calculating Quantitative (python H5 export) - Parameters Time Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
+        set(handles.TextUpdate,'String',['Calculating Quantitative Parameters (python H5 export) Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
         % use for flow python
         % Load x,y,z components of velocity (cropped) - single frame
          vx = h5read(fullfile(directory,'Flow.h5'),'/VX', ... 

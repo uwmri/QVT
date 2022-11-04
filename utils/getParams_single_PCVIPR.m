@@ -49,15 +49,15 @@ AREA = squeeze(DATA(:,:,4));
 MEAN_V = squeeze(DATA(:,:,5));
 
 cd(basedir)
-cd ../DICOM
-ddd = dir('*dcm');
-if isempty(ddd)
-    istgz = dir('*.bz2');
-    if ~isempty(istgz)
-        system(['"C:\Program Files\7-Zip\7z.exe" x ' istgz(1).name ' -aoa']);
-        ddd = dir('*dcm');
-    end 
-end 
+% cd ../DICOM
+% ddd = dir('*dcm');
+% if isempty(ddd)
+%     istgz = dir('*.bz2');
+%     if ~isempty(istgz)
+%         system(['"C:\Program Files\7-Zip\7z.exe" x ' istgz(1).name ' -aoa']);
+%         ddd = dir('*dcm');
+%     end 
+% end 
 %info = dicominfo(ddd(1).name);
 %scan_date = info.FileModDate;
 %mri_loc = info.InstitutionName;
