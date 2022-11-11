@@ -16,6 +16,7 @@
 %% Filter Gating Directory
 gatingDir = uigetdir(pwd, 'Select the directory with the gating tracks');
 cd(gatingDir) %move to this directory
+%gatingDir = pwd;
 
 fullDir = dir(); 
 fullDir(1:2) = [];
@@ -303,7 +304,7 @@ if sum(contains(filesLoaded,'ECG'))==4 % if we have 4 ecg waveform files
     else
         fprintf('   ECG2: LIKELY NOISE\n');
     end 
-    if SNRecg3>-8 % this is an arbitray threshold value, can be changed
+    if SNRecg3>SNRthresh % this is an arbitray threshold value, can be changed
         fprintf('   ECG3: SIGNAL DETECTED\n');
     else
         fprintf('   ECG3: LIKELY NOISE\n');
@@ -569,18 +570,25 @@ function outputResults(datastruct,gatingDir,filesLoaded)
     upperHR = meanHR + 5;
     lowerHR = meanHR - 5;
     withinLims = nansum(datastruct.bpm>lowerHR & datastruct.bpm<upperHR);
-    fprintf('Error Estimation\n');
+    RRs = datastruct.rr(~isnan(datastruct.rr));
+    dRRs = diff(RRs);
+    fprintf('Error Estimation and Heart Rate Variability\n');
     fprintf('    Total recorded heartbeats: %d beats.\n',totalRR);
     fprintf('    Estimated missed heartbeats: %d beats (%2.2f%%).\n',numMissedFull,100*(numMissedFull/totalRR));
     fprintf('    Estimated early triggers: %d beats (%2.2f%%).\n',numEarlyFull,100*(numEarlyFull/totalRR));
     fprintf('    Total error: %2.2f%%.\n',100*((numEarlyFull+numMissedFull)/totalRR));
     fprintf('    Total outliers: %2.2f%%.\n',100*(numOutliers/totalRR));
-    fprintf('    Percent data within mean HR +/- 5 BPM: %2.2f%%.\n\n',100*(withinLims/totalRR));
+    fprintf('    Percent data within mean HR +/- 5 BPM: %2.2f%%.\n',100*(withinLims/totalRR));
+    fprintf('    SDNN: %2.1f.\n',std(RRs));
+    fprintf('    RMSSD: %2.1f.\n',sqrt(mean(dRRs.^2)));
+    fprintf('    pNN50: %2.2f%%.\n',sum(abs(dRRs)>50)/length(dRRs)*100);
+    fprintf('   For info on SDNN, RMSSD, pNN50: pubmed.ncbi.nlm.nih.gov/29034226 \n\n');
     A5 = {'';'Error Estimation';'Total recorded heartbeats';'Estimated missed heartbeats'; ...
         'Estimated early triggers';'Total error (%)';'Total outliers (%)'; ...
-        'Data within mean HR +/- 5 BPM (%)'};
+        'Data within mean HR +/- 5 BPM (%)';'SDNN';'RMSSD';'pNN50'};
     B5 = {'';'';totalRR;numMissedFull;numEarlyFull;100*((numEarlyFull+numMissedFull)/totalRR); ...
-        100*(numOutliers/totalRR); 100*(withinLims/totalRR)};
+        100*(numOutliers/totalRR); 100*(withinLims/totalRR); nanstd(datastruct.rr); ...
+        sqrt(mean(dRRs.^2)); sum(abs(dRRs)>50)/length(dRRs)*100};
     
     within_rr = datastruct.ecg < datastruct.recon_rr;
     ecg_filtered = datastruct.ecg(within_rr);
@@ -607,6 +615,8 @@ function outputResults(datastruct,gatingDir,filesLoaded)
         fprintf('WARNING -- MEDIAN RR > 2000 (HR < 30 BPM)\n');
     elseif highBPM
         fprintf('WARNING -- MEDIAN RR < 500 (HR > 120 BPM)\n');
+    else
+        fprintf('NO WARNINGS');
     end 
     A7 = {''; 'RR linear fit slope (BPM/time)'; 'p-value'; ...
         'HR < 30 bpm?'; 'HR > 120 bpm?'};
