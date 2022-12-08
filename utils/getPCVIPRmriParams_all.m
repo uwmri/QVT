@@ -29,10 +29,27 @@ for i=1:length(d)
         mri_loc{i} = info.InstitutionName;
         coil{i} = info.ReceiveCoilName;
     
-        lifeid = lifeid';
         scan_date = scan_date';
         mri_loc = mri_loc';
         coil = coil';
+        lifeid = lifeid';
+
+%         cd(dd(1).name)
+%         try
+%             cd('processed_data/DAT/')
+%         catch
+%             cd('processed_data/H5/')
+%         end 
+%         fid = fopen([pwd filesep 'pcvipr_header.txt'], 'r');
+%         delimiter = ' ';
+%         formatSpec = '%s%s%[^\n\r]'; %read 2 strings(%s%s),end line(^\n),new row(r)
+%         % Info from headers are placed in dataArray, 1x2 cell array.
+%         dataArray = textscan(fid, formatSpec, 'Delimiter', delimiter, ...
+%             'MultipleDelimsAsOne', true, 'ReturnOnError', false);
+%         fclose(fid);
+%         dataArray{1,2} = cellfun(@str2num,dataArray{1,2}(:), 'UniformOutput', false);
+%         pcviprHeader = cell2struct(dataArray{1,2}(:), dataArray{1,1}(:), 1);
+%         timeres(i) = pcviprHeader.timeres; %temporal resolution (ms)
     end 
 
     cd(basedir)
