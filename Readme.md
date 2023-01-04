@@ -10,7 +10,7 @@ If you are using the QVT for cranial 4D flow MRI analysis in your study, please 
 
 - [Schrauben, E., Wahlin, A., Ambarki, K., Spaak, E., Malm, J., Wieben, O., & Eklund, A. (2015). Fast 4D flow MRI intracranial segmentation and quantification in tortuous arteries. J Magn Reson Imaging, 42(5), 1458-1464. doi:10.1002/jmri.24900](https://pubmed.ncbi.nlm.nih.gov/25847621/)
 
-- [Roberts GS*, Hoffman CA*, Rivera-Rivera LA, Berman SE, Eisenmenger LB, Wieben O. Automated hemodynamic assessment for cranial 4D flow MRI. Magn Reson Imaging. 2022 Dec 26:S0730-725X(22)00231-4. doi: 10.1016/j.mri.2022.12.016. Epub ahead of print. PMID: 36581214. *Authors contributed equally to this work](https://pubmed.ncbi.nlm.nih.gov/36581214/).
+- [Roberts GS, Hoffman CA, Rivera-Rivera LA, Berman SE, Eisenmenger LB, Wieben O. Automated hemodynamic assessment for cranial 4D flow MRI. Magn Reson Imaging. 2022 Dec 26:S0730-725X(22)00231-4. doi: 10.1016/j.mri.2022.12.016. Epub ahead of print. PMID: 36581214.](https://pubmed.ncbi.nlm.nih.gov/36581214/). Roberts, GR and Hoffman, CA contributed equally to this work. 
 
 ### License ###
 BSD 2-Clause
