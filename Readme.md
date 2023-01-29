@@ -46,7 +46,7 @@ Clone the 'QVT' repository into the directory of your choice (e.g., 'C:\Users\us
 
 ### Dependencies ###
 **Required Matlab Add-Ons** \
-Image Processing Toolbox (for medfilt3)
+Image Processing Toolbox (for medfilt3) \
 Curve Fitting Toolbox (for csaps) \
 Statistics and Machine Learning Toolbox (for kmeans)
 
