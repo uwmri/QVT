@@ -87,7 +87,7 @@ guidata(hObject, handles);
 % Create global namespace
 global branchList Planes hfull p branchLabeled Ntxt nframes res matrix VENC
 global directory AveAreaBranch LogPoints fullCData area_val flowPerHeartCycle_val
-global PI_val diam_val maxVel_val RI_val flowPulsatile_val timeres segment
+global PI_val vmaxPI_val diam_val maxVel_val RI_val flowPulsatile_val maxVelFrame timeres segment
 global r timeMIPcrossection segmentFull vTimeFrameave velMean_val versionNum
 global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
 global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
@@ -149,8 +149,10 @@ if  fileIndx > 1  %if a pre-processed case is selected
     VENC = data_struct.VENC;
     segment = data_struct.segment; %binary mask (angiogram)
     PI_val = data_struct.PI_val; %pulsatility index
+    vmaxPI_val = data_struct.vmaxPI_val; %pulsatility index from vmax
     RI_val = data_struct.RI_val; %resistivity index
     flowPulsatile_val = data_struct.flowPulsatile_val; %TR flow
+    maxVelFrame = data_struct.maxVelFrame; %TR max vel
     r = data_struct.r; %radius of plane (plane size=(2*r)+1)
     timeMIPcrossection = data_struct.timeMIPcrossection; %complex diff.
     MAGcrossection = data_struct.MAGcrossection; %magnitude (in-plane)
@@ -173,7 +175,7 @@ if  fileIndx > 1  %if a pre-processed case is selected
 else %Load in pcvipr data from scratch
     if exist([directory filesep 'Flow.h5'],'file')
         [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_val, ...
-        maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
+        maxVel_val,PI_val,vmaxPI_val,RI_val,flowPulsatile_val,maxVelFrame, velMean_val, ...
         VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
         bnumMeanFlow,bnumStdvFlow,StdvFromMean] ...
@@ -181,7 +183,7 @@ else %Load in pcvipr data from scratch
         % = loadHDF5_py(directory,handles); 
     elseif exist([directory filesep 'CD.dat'],'file')
         [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_val, ...
-        maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
+        maxVel_val,PI_val,vmaxPI_val,RI_val,flowPulsatile_val,maxVelFrame,velMean_val, ...
         VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
         bnumMeanFlow,bnumStdvFlow,StdvFromMean] ...  
@@ -211,8 +213,10 @@ else %Load in pcvipr data from scratch
     data_struct.VENC = VENC;
     data_struct.segment = segment;
     data_struct.PI_val = PI_val;
+    data_struct.vmaxPI_val = vmaxPI_val;
     data_struct.RI_val = RI_val;
     data_struct.flowPulsatile_val = flowPulsatile_val;
+    data_struct.maxVelFrame = maxVelFrame;
     data_struct.r = r;
     data_struct.timeMIPcrossection = timeMIPcrossection;
     data_struct.MAGcrossection = MAGcrossection;
@@ -243,7 +247,7 @@ else %Load in pcvipr data from scratch
         
     % Create excel files save summary data
     col_header = ({'Vessel Label', 'Centerline Point', 'Notes',['Max Velocity < ' num2str(VENC) 'cm/s'], ...
-        'Mean Flow ml/s','Pulsatility Index','Branch Label'});
+        'Mean Flow ml/s','Pulsatility Index','Vmax Pulsatility Index','Branch Label'});
     xlwrite([SavePath filesep 'SummaryParamTool.xls'],col_header,'Summary_Centerline','A1');
     xlwrite([SavePath filesep 'SummaryParamTool.xls'],get(handles.NamePoint,'String'),'Summary_Centerline','A2');
     set(handles.TextUpdate,'String','Please Select Analysis Plane Location'); drawnow;
@@ -341,7 +345,7 @@ varargout{1} = handles.output;
 
 % --- Executes on selection change in parameter_choice.
 function parameter_choice_Callback(hObject, eventdata, handles)
-global hscatter area_val RI_val PI_val dcm_obj fig velMean_val
+global hscatter area_val RI_val PI_val vmaxPI_val dcm_obj fig velMean_val
 global flowPerHeartCycle_val fullCData maxVel_val cbar Labeltxt diam_val
 global StdvFromMean
 
@@ -523,7 +527,7 @@ PointLabel = contents{get(hObject,'Value')};
 function manualSeg_Callback(hObject, eventdata, handles)
 global dcm_obj branchList timeMIPcrossection segmentFull SavePath caseFilePath
 global area_val flowPerHeartCycle_val maxVel_val r res nframes
-global flowPulsatile_val PI_val RI_val velMean_val 
+global flowPulsatile_val maxVelFrame PI_val vmaxPI_val RI_val velMean_val 
 global VplanesAllx VplanesAlly VplanesAllz PointLabel
 % global bnumStdvFlow bnumMeanFlow StdvFromMean diam_val 
 
@@ -583,16 +587,19 @@ for q = 1:length(index_range)
         vTimeFrame = roiMask(:).*0.1.*(v1(:) + v2(:) + v3(:)); %masked velocity (cm/s)
         vTimeFramerowMean = sum(vTimeFrame) ./ sum(vTimeFrame~=0); %mean vel
         flowPulsatile_val(INDEX,n) = vTimeFramerowMean.*area; %TR flow (ml/s)
-        maxVelFrame(n) = max(vTimeFrame); %max vel. each frame (cm/s)
+        maxVelFrame(INDEX,n) = max(vTimeFrame,[],2); %max vel. each frame (cm/s)
+        %maxVelFrame(n) = max(vTimeFrame); %max vel. each frame (cm/s)
         velPulsatile_val(n) = vTimeFramerowMean;%mean vel. each frame (cm/s) 
     end 
-    maxVel_val(INDEX) = max(maxVelFrame); %max in-plane veloc. for all frames
+    maxVel_val(INDEX) = max(maxVelFrame,[],2); %max in-plane veloc. for all frames
+    %maxVel_val(INDEX) = max(maxVelFrame); %max in-plane veloc. for all frames
     flowPerHeartCycle_val(INDEX) = sum(flowPulsatile_val(INDEX,:),2)./(nframes); %TA flow (ml/s)
     velMean_val(INDEX) = sum(velPulsatile_val)./(nframes); %TA in-plane velocities
     segmentFull(INDEX,:) = roiMask(:);
     area_val(INDEX,1) = area;
 
     PI_val(INDEX) = abs( max(flowPulsatile_val(INDEX,:)) - min(flowPulsatile_val(INDEX,:)) )./mean(flowPulsatile_val(INDEX,:));
+    vmaxPI_val(INDEX) = abs( max(maxVelFrame(INDEX,:)) - min(maxVelFrame(INDEX,:)) )./mean(maxVelFrame(INDEX,:));
     RI_val(INDEX) = abs( max(flowPulsatile_val(INDEX,:)) - min(flowPulsatile_val(INDEX,:)) )./max(flowPulsatile_val(INDEX,:));
     
     segName = regexprep(PointLabel, ' ', '_');
@@ -616,7 +623,7 @@ set(dcm_obj,'UpdateFcn',@myupdatefcn_all); %update dataCursor w/ cust. fcn
 % --- Executes on button press in SavePoint.
 function SavePoint_Callback(hObject, eventdata, handles)
 global PointLabel nframes VENC timeres branchList timeMIPcrossection area_val
-global flowPerHeartCycle_val PI_val diam_val maxVel_val RI_val flowPulsatile_val
+global flowPerHeartCycle_val PI_val vmaxPI_val diam_val maxVel_val RI_val flowPulsatile_val maxVelFrame
 global vTimeFrameave velMean_val dcm_obj fig segmentFull SavePath MAGcrossection
 global vesselsAnalyzed allNotes
 
@@ -658,6 +665,8 @@ flowPerHeartCycle = flowPerHeartCycle_val(index_range);
 flowPerHeartCycle = [flowPerHeartCycle;mean(flowPerHeartCycle);std(flowPerHeartCycle)];
 PI = PI_val(index_range) ;
 PI = [PI;mean(PI);std(PI)];
+vmaxPI = vmaxPI_val(index_range) ;
+vmaxPI = [vmaxPI;mean(vmaxPI);std(vmaxPI)];
 maxVel = maxVel_val(index_range);
 maxVel = [maxVel;mean(maxVel);std(maxVel)];
 meanVel = velMean_val(index_range);
@@ -668,6 +677,9 @@ RI = [RI;mean(RI);std(RI)];
 % Time-resolved flow
 flowPulsatile = flowPulsatile_val(index_range,:);
 flowPulsatile = [flowPulsatile;mean(flowPulsatile,1);std(flowPulsatile,1)];
+
+maxvelPulsatile = maxVelFrame(index_range,:);
+maxvelPulsatile = [maxvelPulsatile;mean(maxvelPulsatile,1);std(maxvelPulsatile,1)];
 
 % Collect branch name and Labels
 savename = PointLabel; %name of current vessel
@@ -691,16 +703,16 @@ end
 
 if isempty(allNotes{get(handles.NamePoint,'Value')+1})
     Notes = get(handles.NoteBox,'String'); %get any notes from notebox
-    SummaryInfo = {CLpoint,Notes,MaxVel,flowPerHeartCycle(end-1),PI(end-1),bnum};
+    SummaryInfo = {CLpoint,Notes,MaxVel,flowPerHeartCycle(end-1),PI(end-1),vmaxPI(end-1),bnum};
     xlwrite([SavePath filesep 'SummaryParamTool.xls'],SummaryInfo,'Summary_Centerline',SaveRow);
 end 
 set(handles.TextUpdate,'String','Saving Data..');drawnow;
 
 % save time-averaged
 col_header = ({'Point along Vessel', 'Area (cm^2)', 'Area Ratio', 'Max Velocity (cm/s)',...
-    'Mean Velocity (cm/s)','Average Flow(mL/s)','Pulsatility Index','Resistivity Index'});
+    'Mean Velocity (cm/s)','Average Flow(mL/s)','Pulsatility Index','Vmax Pulsatility Index','Resistivity Index'});
 time_avg = vertcat(col_header,num2cell(real(horzcat(Labels',...
-    area,diam,maxVel,meanVel,flowPerHeartCycle,PI,RI))));
+    area,diam,maxVel,meanVel,flowPerHeartCycle,PI,vmaxPI,RI))));
 time_avg{end-1,1} = 'Mean';
 time_avg{end,1} = 'Standard Deviation';
 xlwrite([SavePath filesep 'SummaryParamTool.xls'],time_avg,[savename '_T_averaged']);
@@ -715,6 +727,17 @@ time_resolve = vertcat(col_header2, col_header3, num2cell(real(horzcat(Labels',f
 time_resolve{end-1,1} = 'Mean';
 time_resolve{end,1} = 'Standard Deviation';
 xlwrite([SavePath filesep 'SummaryParamTool.xls'],time_resolve,[savename '_T_resolved']);
+set(handles.TextUpdate,'String','Saving Data....');drawnow;
+
+% save time-resolved max velocity
+spaces = repmat({''},1,nframes-1);
+col_header2 = ({'Cardiac Time (ms)'});
+col_header3 = horzcat({'Point along Vessel','Max velocity (cm/s)'},spaces);
+col_header2 = horzcat(col_header2, num2cell(real(timeres/1000*linspace(1,nframes,nframes))));
+time_resolve = vertcat(col_header2, col_header3, num2cell(real(horzcat(Labels',maxvelPulsatile))));
+time_resolve{end-1,1} = 'Mean';
+time_resolve{end,1} = 'Standard Deviation';
+xlwrite([SavePath filesep 'SummaryParamTool.xls'],time_resolve,[savename 'maxvel_T_resolved']);
 set(handles.TextUpdate,'String','Saving Data....');drawnow;
 
 % Save: interactive window, main GUI , and cross-section images as montage
@@ -816,7 +839,7 @@ view(fig.CurrentAxes,[90,0])
 
 % --- Executes on slider movement.
 function AreaThreshSlide_Callback(hObject, eventdata, handles)
-global LogPoints area_val branchList hscatter AveAreaBranch PI_val RI_val
+global LogPoints area_val branchList hscatter AveAreaBranch PI_val vmaxPI_val RI_val
 global velMean_val diam_val maxVel_val flowPerHeartCycle_val StdvFromMean
 
 LogPoints = find(AveAreaBranch>max(AveAreaBranch)*get(hObject,'Value')*.15);
@@ -910,7 +933,7 @@ function InvertArea_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % Hint: get(hObject,'Value') returns toggle state of InvertArea
-global LogPoints area_val branchList hscatter PI_val RI_val velMean_val
+global LogPoints area_val branchList hscatter PI_val vmaxPI_val RI_val velMean_val
 global diam_val maxVel_val flowPerHeartCycle_val StdvFromMean
 
 % Capable of inverting areaThresh (keep vessels OUTSIDE/INSIDE areaThresh)
@@ -1023,7 +1046,7 @@ end
 function txt = myupdatefcn_all(empt,event_obj)
 % Customizes text of data tips
 global Labeltxt branchLabeled PointLabel branchList fullCData
-global flowPulsatile_val Planes p dcm_obj Ntxt hfull timeMIPcrossection
+global flowPulsatile_val maxVelFrame Planes p dcm_obj Ntxt hfull timeMIPcrossection
 global segmentFull MAGcrossection vTimeFrameave fig timeres nframes
 global VplanesAllx VplanesAlly VplanesAllz
 
