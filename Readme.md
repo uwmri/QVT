@@ -63,10 +63,10 @@ From the command window, type the following command to open the GUI:
 
 Once opened, select 'Load Data'. From the pop-up window, select the folder which contains 4D flow MRI data. Note that you will not see .dat files or .h5 files because it asking for you to select a directory; you must know beforehand the folder in which the 4D flow data exists.
 
-**IMPORTANT NOTE: Currently, this data must be in a format specific to UW-Madison** \
-From the PCVIPR reconstruction, data may be in .dat format (multiple .dat files of containing 3D volumes of magnitude, complex difference, and velocity data) or in HDF5 format (single file usually named 'Flow.h5'). Both formats can be loaded into the tool with the 'loadpcvipr.m' and 'loadHDF5.m' functions. 
+**IMPORTANT NOTE: Currently, this data must be in a format specific to UW-Madison (PC-VIPR, GE data) or Amsterdam AMC (PROUD 4D flow, Philps par/rec) ** \
+From the reconstruction, data may be in .dat format (multiple .dat files of containing 3D volumes of magnitude, complex difference, and velocity data), in HDF5 format (single file usually named 'Flow.h5'), or in Philips par/rec format (3 .par/.rec files, containing the velocity data). All formats are loaded into the tool with independent 'load..' functions. 
 
-In the near future, we plan to implement functions to load more universal 4D flow data formats (e.g., DICOM series, NIFTI?, etc) from other institutions into our tool. However, this is currently not possible. If you have data from outside of UW-Madison and would like to use the QVT, please reach out and we can help develop functions to load in this data.
+In the near future, we plan to implement functions to load more universal 4D flow data formats (e.g., DICOM series, NIFTI?, etc) from other institutions into our tool. If you have data from outside of UW-Madison and would like to use the QVT, please reach out and we can help develop functions to load in this data.
 
 
 ## Additional Resources ##
