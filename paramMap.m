@@ -170,7 +170,7 @@ if  fileIndx > 1  %if a pre-processed case is selected
     pause(1)
     set(handles.TextUpdate,'String','Please Select Analysis Plane Location'); drawnow;
 
-else %Load in pcvipr data from scratch
+else %Load in data from scratch
     if exist([directory filesep 'Flow.h5'],'file')
         [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_val, ...
         maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
@@ -186,9 +186,15 @@ else %Load in pcvipr data from scratch
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
         bnumMeanFlow,bnumStdvFlow,StdvFromMean] ...  
         = loadpcvipr(directory,handles); 
-    end 
+    elseif ~isempty(dir([directory filesep '*.rec']))
+        [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_val, ...
+            maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
+            VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
+            timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
+            bnumMeanFlow,bnumStdvFlow,StdvFromMean] = loadPROUD4Dflow(directory,handles);
+    end
     
-    directory = uigetdir; %select saving dir 
+    % directory = uigetdir; %select saving dir 
     % Save all variables needed to run parametertool. This will be used
     % later to load in data faster instead of having to reload all data.
     % Save data_structure with time/version-stamped filename in 'directory'
@@ -567,7 +573,7 @@ for q = 1:length(index_range)
     
     oldMask = reshape(segmentFull(INDEX,:),[81 81]);
     InterpVals = 4; %choose the interpolation between points
-    dArea = (res/10)^2; %pixel size (cm^2)
+    dArea = (mean(res)/10)^2; %pixel size (cm^2)
     area = sum(roiMask(:))*dArea*((2*r+1)/(2*r*InterpVals+1))^2;
     for n=1:nframes
         v1 = squeeze(VplanesAllx(INDEX,:,n));
