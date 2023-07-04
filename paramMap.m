@@ -92,7 +92,8 @@ global r timeMIPcrossection segmentFull vTimeFrameave velMean_val versionNum
 global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
 global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
 global VplanesAllx VplanesAlly VplanesAllz imageData caseFilePath
-global vesselsAnalyzed allNotes
+global vesselsAnalyzed allNotes segmentFullJS 
+%SD
 
 % Initial Variables
 hfull = handles;
@@ -155,6 +156,7 @@ if  fileIndx > 1  %if a pre-processed case is selected
     timeMIPcrossection = data_struct.timeMIPcrossection; %complex diff.
     MAGcrossection = data_struct.MAGcrossection; %magnitude (in-plane)
     segmentFull = data_struct.segmentFull; %cross-sectional plane masks
+    segmentFullJS = data_struct.segmentFullJS; %cross-sectional plane masks SD
     vTimeFrameave = data_struct.vTimeFrameave; %velocity (in-plane)
     Planes = data_struct.Planes; %outer coordinates of plane
     bnumMeanFlow = data_struct.bnumMeanFlow; %mean flow along branches
@@ -186,7 +188,17 @@ else %Load in pcvipr data from scratch
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
         bnumMeanFlow,bnumStdvFlow,StdvFromMean] ...  
         = loadpcvipr(directory,handles); 
+    %elseif exist([directory filesep 'Ax_4DFLOW_1_slab12_iso__AP_Flow_202'],'dir')
+    elseif exist([directory filesep],'dir')
+        [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_val, ...
+        maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
+        VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
+        timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
+        bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullJS] ...  
+        = loadDCM_JSseg(directory,handles); %SD Segment full
+        %= loadDCM(directory,handles); %SD Segment full
     end 
+
     
     directory = uigetdir; %select saving dir 
     % Save all variables needed to run parametertool. This will be used
@@ -194,7 +206,7 @@ else %Load in pcvipr data from scratch
     % Save data_structure with time/version-stamped filename in 'directory'
     time = datestr(now);
     saveState = [time(1:2) time(4:6) time(10:11) '_' time(13:14) time(16:17) '_' versionNum];
-    set(handles.TextUpdate,'String',['Saving Data as pcviprData_' saveState '.mat']); drawnow;
+    set(handles.TextUpdate,'String',['Saving Data as qvtData_ISOfix_' saveState '.mat']); drawnow;
     
     data_struct = [];
     data_struct.directory = directory;
@@ -217,6 +229,7 @@ else %Load in pcvipr data from scratch
     data_struct.timeMIPcrossection = timeMIPcrossection;
     data_struct.MAGcrossection = MAGcrossection;
     data_struct.segmentFull = segmentFull;
+    data_struct.segmentFullJS = segmentFullJS; %SD
     data_struct.vTimeFrameave = vTimeFrameave;
     data_struct.Planes = Planes;
     data_struct.bnumMeanFlow = bnumMeanFlow;
@@ -229,12 +242,12 @@ else %Load in pcvipr data from scratch
     
     
     % Saves processed data in same location as pcvipr.mat files
-    caseFilePath = fullfile(directory,['pcviprData_' saveState '.mat']);
+    caseFilePath = fullfile(directory,['qvtData_ISOfix_' saveState '.mat']);
     save(caseFilePath,'data_struct','Vel_Time_Res','imageData')
     
     % This will be the name used for the Excel file
     finalFolder = regexp(directory,filesep,'split');
-    SummaryName = [finalFolder{end} '_pcviprData_' saveState];
+    SummaryName = [finalFolder{end} '_qvtData_ISOfix_' saveState];
     warning off
     mkdir(directory,SummaryName); %makes directory if it already exists
     
@@ -393,7 +406,10 @@ switch str{val}
     case 'Flow Consistency'
         Labeltxt = {'Flow Consistency Metric: ',  ' ';'Stdv from Mean: ',' '};
         hscatter.CData = StdvFromMean;
-        caxis(fig.CurrentAxes,[0 4])
+        %caxis(fig.CurrentAxes,[0 4])
+        %caxis(fig.CurrentAxes,[0 (mean(StdvFromMean(:))+2*std(StdvFromMean(:)))])
+        caxis(fig.CurrentAxes,[2 4])
+        %caxis(fig.CurrentAxes,[0 0.8*max(StdvFromMean(:))])
         cl = caxis(fig.CurrentAxes);
         set(get(cbar,'xlabel'),'string','Flow Consistency Metric','fontsize',16,'Color','white');
         set(cbar,'FontSize',16,'color','white');
@@ -526,7 +542,7 @@ global area_val flowPerHeartCycle_val maxVel_val r res nframes
 global flowPulsatile_val PI_val RI_val velMean_val 
 global VplanesAllx VplanesAlly VplanesAllz PointLabel
 % global bnumStdvFlow bnumMeanFlow StdvFromMean diam_val 
-
+%% NOTE, THE MANUAL SEGMENTATION IS NOT CURRENTLY UPDATED WITH NEW AREA.
 
 info_struct = getCursorInfo(dcm_obj);
 ptList = [info_struct.Position];
@@ -618,7 +634,8 @@ function SavePoint_Callback(hObject, eventdata, handles)
 global PointLabel nframes VENC timeres branchList timeMIPcrossection area_val
 global flowPerHeartCycle_val PI_val diam_val maxVel_val RI_val flowPulsatile_val
 global vTimeFrameave velMean_val dcm_obj fig segmentFull SavePath MAGcrossection
-global vesselsAnalyzed allNotes
+global vesselsAnalyzed allNotes segmentFullJS
+%SD
 
 vesselsAnalyzed{end+1} = PointLabel;
 
@@ -983,7 +1000,8 @@ end
 
 function updateVcrossTR(handles)
 global dcm_obj hfull segmentFull VplanesAllx VplanesAlly VplanesAllz 
-global nframes branchList
+global nframes branchList segmentFullJS
+%SD
 
 info_struct = getCursorInfo(dcm_obj);
 if ~isempty(info_struct)
@@ -1025,7 +1043,8 @@ function txt = myupdatefcn_all(empt,event_obj)
 global Labeltxt branchLabeled PointLabel branchList fullCData
 global flowPulsatile_val Planes p dcm_obj Ntxt hfull timeMIPcrossection
 global segmentFull MAGcrossection vTimeFrameave fig timeres nframes
-global VplanesAllx VplanesAlly VplanesAllz
+global VplanesAllx VplanesAlly VplanesAllz segmentFullJS
+%SD
 
 info_struct = getCursorInfo(dcm_obj);
 ptList = [info_struct.Position];
@@ -1054,24 +1073,29 @@ imdim = sqrt(size(segmentFull,2)); %side length of cross-section
 
 Maskcross = segmentFull(pindex,:);
 Maskcross = reshape(Maskcross,imdim,imdim);
+MaskcrossJS = segmentFullJS(pindex,:);
+MaskcrossJS = reshape(MaskcrossJS,imdim,imdim);
 
 %Magnitude TA
 MAGcross = MAGcrossection(pindex,:);
 MAGcross = reshape(MAGcross,imdim,imdim);
 imshow(MAGcross,[],'InitialMagnification','fit','Parent',hfull.MAGcross)
-visboundaries(hfull.MAGcross,Maskcross,'LineWidth',1)
+visboundaries(hfull.MAGcross,Maskcross,'LineWidth',1,'Color','red')
+visboundaries(hfull.MAGcross,MaskcrossJS,'LineWidth',1,'Color','blue')
 
 %Complex diffference TA
 CDcross = timeMIPcrossection(pindex,:);
 CDcross = reshape(CDcross,imdim,imdim);
 imshow(CDcross,[],'InitialMagnification','fit','Parent', hfull.CDcross)
 visboundaries(hfull.CDcross,Maskcross,'LineWidth',1)
+visboundaries(hfull.CDcross,MaskcrossJS,'LineWidth',1,'Color','blue')
 
 %Velocity TA - through plane
 Vcross = vTimeFrameave(pindex,:);
 Vcross = reshape(Vcross,imdim,imdim);
 imshow(Vcross,[],'InitialMagnification','fit','Parent',hfull.VELcross)
 visboundaries(hfull.VELcross,Maskcross,'LineWidth',1)
+visboundaries(hfull.VELcross,MaskcrossJS,'LineWidth',1,'Color','blue')
 
 %Velocity TR - through plane
 sliceNum = 1+round( get(hfull.VcrossTRslider,'Value').*(nframes-1) ); 
@@ -1086,6 +1110,7 @@ minn = min(Maskcross.*VcrossTR,[],'all')*1.1;
 maxx = max(Maskcross.*VcrossTR,[],'all')*1.1;
 imshow(VcrossTR(:,:,sliceNum),[minn maxx],'InitialMagnification','fit','Parent',hfull.TRcross)
 visboundaries(hfull.TRcross,Maskcross,'LineWidth',1)
+visboundaries(hfull.TRcross,MaskcrossJS,'LineWidth',1,'Color','blue')
 
 % Segmentation mask
 %imshow(Maskcross,[],'InitialMagnification','fit','Parent',hfull.TRcross)
@@ -1098,23 +1123,42 @@ pside(pside==pindex) = [];
 
 cardiacCycle = (1:nframes).*timeres; %vector of cardiac cycle (ms)
 % Plot flow waveform
+% if length(pside)==2
+%     plot(cardiacCycle,smooth(flowPulsatile_val(pindex,:)),...
+%         'k',cardiacCycle,smooth(flowPulsatile_val(pside(1),:)),...
+%         'r',cardiacCycle,smooth(flowPulsatile_val(pside(2),:)),...
+%         'r','LineWidth',2,'Parent',hfull.pfwaveform)
+% elseif length(pside)==3
+%     plot(cardiacCycle,smooth(flowPulsatile_val(pindex,:)),...
+%         'k',cardiacCycle,smooth(flowPulsatile_val(pside(1),:)),...
+%         'r',cardiacCycle,smooth(flowPulsatile_val(pside(2),:)),...
+%         'r',cardiacCycle,smooth(flowPulsatile_val(pside(3),:)),...
+%         'b','LineWidth',2,'Parent',hfull.pfwaveform)
+% else
+%     plot(cardiacCycle,smooth(flowPulsatile_val(pindex,:)),...
+%         'k',cardiacCycle,smooth(flowPulsatile_val(pside(1),:)),...
+%         'r',cardiacCycle,smooth(flowPulsatile_val(pside(2),:)),...
+%         'r',cardiacCycle,smooth(flowPulsatile_val(pside(3),:)),...
+%         'b',cardiacCycle,smooth(flowPulsatile_val(pside(4),:)),...
+%         'b','LineWidth',2,'Parent',hfull.pfwaveform)
+% end
 if length(pside)==2
-    plot(cardiacCycle,smooth(flowPulsatile_val(pindex,:)),...
-        'k',cardiacCycle,smooth(flowPulsatile_val(pside(1),:)),...
-        'r',cardiacCycle,smooth(flowPulsatile_val(pside(2),:)),...
+    plot(cardiacCycle,flowPulsatile_val(pindex,:),...
+        'k',cardiacCycle,flowPulsatile_val(pside(1),:),...
+        'r',cardiacCycle,flowPulsatile_val(pside(2),:),...
         'r','LineWidth',2,'Parent',hfull.pfwaveform)
 elseif length(pside)==3
-    plot(cardiacCycle,smooth(flowPulsatile_val(pindex,:)),...
-        'k',cardiacCycle,smooth(flowPulsatile_val(pside(1),:)),...
-        'r',cardiacCycle,smooth(flowPulsatile_val(pside(2),:)),...
-        'r',cardiacCycle,smooth(flowPulsatile_val(pside(3),:)),...
+    plot(cardiacCycle,flowPulsatile_val(pindex,:),...
+        'k',cardiacCycle,flowPulsatile_val(pside(1),:),...
+        'r',cardiacCycle,flowPulsatile_val(pside(2),:),...
+        'r',cardiacCycle,flowPulsatile_val(pside(3),:),...
         'b','LineWidth',2,'Parent',hfull.pfwaveform)
 else
-    plot(cardiacCycle,smooth(flowPulsatile_val(pindex,:)),...
-        'k',cardiacCycle,smooth(flowPulsatile_val(pside(1),:)),...
-        'r',cardiacCycle,smooth(flowPulsatile_val(pside(2),:)),...
-        'r',cardiacCycle,smooth(flowPulsatile_val(pside(3),:)),...
-        'b',cardiacCycle,smooth(flowPulsatile_val(pside(4),:)),...
+    plot(cardiacCycle,flowPulsatile_val(pindex,:),...
+        'k',cardiacCycle,flowPulsatile_val(pside(1),:),...
+        'r',cardiacCycle,flowPulsatile_val(pside(2),:),...
+        'r',cardiacCycle,flowPulsatile_val(pside(3),:),...
+        'b',cardiacCycle,flowPulsatile_val(pside(4),:),...
         'b','LineWidth',2,'Parent',hfull.pfwaveform)
 end
 set(get(hfull.pfwaveform,'XLabel'),'String','Cardiac Time Frame (ms)','FontSize',12)
