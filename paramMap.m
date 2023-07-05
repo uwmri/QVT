@@ -188,14 +188,13 @@ else %Load in pcvipr data from scratch
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
         bnumMeanFlow,bnumStdvFlow,StdvFromMean] ...  
         = loadpcvipr(directory,handles); 
-    %elseif exist([directory filesep 'Ax_4DFLOW_1_slab12_iso__AP_Flow_202'],'dir')
     elseif exist([directory filesep],'dir')
         [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_val, ...
         maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
         VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
         bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullJS] ...  
-        = loadDCM_JSseg(directory,handles); %SD Segment full
+        = loadDCM(directory,handles); %SD Segment full
         %= loadDCM(directory,handles); %SD Segment full
     end 
 
@@ -272,7 +271,7 @@ fig = figure(1); cla
 %set(fig,'Position',[2325 57 1508 1047]); %WORK
 %set(fig,'Position',[1856 37 1416 954]); %HOME
 
-hpatch = patch(isosurface(permute(segment,[2 1 3]),0.5),'FaceAlpha',0); %bw iso angiogram
+hpatch = patch(isosurface(permute(segment,[2 1 3]),0.5),'FaceAlpha',0.15); %bw iso angiogram
 reducepatch(hpatch,0.7);
 set(hpatch,'FaceColor','white','EdgeColor', 'none','PickableParts','none');
 set(gcf,'color','black');
@@ -315,7 +314,7 @@ zlim([ax.ZLim(1)-r ax.ZLim(2)+r])
 hold on
 p = fill3(Planes(1,:,1)',Planes(1,:,2)',Planes(1,:,3)',[1 0 0], ...
     'EdgeColor',[1 0 0],'FaceAlpha',0.3,'PickableParts','none', ...
-    'Parent', fig.CurrentAxes); %fill3(pty',ptx',ptz','r') for isosurface
+    'Parent', fig.CurrentAxes); %fill3(pty',ptx',ptz','r')% for isosurface
 hold off
 
 % Update string (undocumentedmatlab.com/articles/controlling-plot-data-tips)

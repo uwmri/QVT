@@ -1,15 +1,30 @@
 function [area_val,diam_val,flowPerHeartCycle_val,maxVel_val,PI_val,RI_val,flowPulsatile_val,...
     velMean_val,VplanesAllx,VplanesAlly,VplanesAllz,r,timeMIPcrossection,segmentFull,...
     vTimeFrameave,MAGcrossection,bnumMeanFlow,bnumStdvFlow,StdvFromMean,Planes] ...
-    = paramMap_params_new(filetype,branchList,matrix,timeMIP,vMean,back,...
-    BGPCdone,directory,nframes,res,MAG,IDXstart,IDXend,handles)
+    = paramMap_params_new(varargin)
+%filetype,branchList,matrix,timeMIP,vMean,back,...
+  %  BGPCdone,directory,nframes,res,MAG,IDXstart,IDXend,handles)
 %PARAMMAP_PARAMS_NEW: Create tangent planes and calculate hemodynamics
 %   Based on a sliding threshold segmentation algorithm developed by Carson Hoffman
 %   Used by: loadpcvipr.m
 %   Dependencies: slidingThreshold.m
+%% Argument Inputs
+filetype = varargin{1};
+branchList = varargin{2};
+matrix = varargin{3};
+timeMIP = varargin{4};
+vMean = varargin{5};
+back = varargin{6};
+BGPCdone = varargin{7};
+directory = varargin{8};
+nframes = varargin{9};
+res = varargin{10};
+MAG = varargin{11};
+handles = varargin{12};
+v = varargin{13};
 
 %% Tangent Plane Creation
-set(handles.TextUpdate,'String','Creating Tangent Planes');drawnow;
+%set(handles.TextUpdate,'String','Creating Tangent Planes');drawnow;
 d = 2; %dist. behind/ahead of current pt for tangent plane calc (d=2->5pts)
 Tangent_V = zeros(0,3);
 for n = 1:max(branchList(:,4))
@@ -130,7 +145,7 @@ clear N max_pts d dimIM
 %CD_bin_new = imdilate(CD_bin,SE);
 
 %% Interpolation
-set(handles.TextUpdate,'String','Interpolating Data');drawnow;
+%set(handles.TextUpdate,'String','Interpolating Data');drawnow;
 % Get interpolated velocity from 3 directions, multipley w/ tangent vector
 v1 = interp3(y,x,z,vMean(:,:,:,1),y_full(:),x_full(:),z_full(:),'linear',0);
 v2 = interp3(y,x,z,vMean(:,:,:,2),y_full(:),x_full(:),z_full(:),'linear',0);
@@ -157,7 +172,7 @@ MAGcrossection = reshape(Mag_int,[length(branchList),(width).^2]);
 clear v1 v2 v3 MAG timeMIP temp CD_int Mag_int vtimeave 
 
 %% In-Plane Segmentation
-set(handles.TextUpdate,'String','Performing In-Plane Segmentation');drawnow;
+%set(handles.TextUpdate,'String','Performing In-Plane Segmentation');drawnow;
 area_val = zeros(size(Tangent_V,1),1);
 diam_val = zeros(size(Tangent_V,1),1);
 segmentFull = zeros([length(branchList),(width).^2]);
@@ -214,6 +229,7 @@ for n = 1:size(Tangent_V,1)
     % Vessel area measurements
     dArea = (res/10).^2; %pixel size (cm^2)
     area_val(n,1) = sum(segment(:))*dArea*((2*r+1)/(2*r*InterpVals+1))^2;
+   
     
     segmentFull(n,:) = segment(:);
     
@@ -229,7 +245,7 @@ for n = 1:size(Tangent_V,1)
     diam_val(diam_val==inf) = 0;
     %diam_val(n) = 2*sqrt(area_val(n)/pi); %equivalent diameter
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-end 
+end
 clear cdSLICE magSLICE temp segment weightIMAGE dArea L LabUse CenIdx Num
 
 %% Extract Time-Resolved Velocities
@@ -254,7 +270,7 @@ idCOL = reshape(ROW+COL,[1 numel(ROW)]); %interp query points
 
 for j = 1:nframes
     if strcmp(filetype,'dat')
-        set(handles.TextUpdate,'String',['Calculating Quantitative Params Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
+        %set(handles.TextUpdate,'String',['Calculating Quantitative Params Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
 
         % Load x,y,z components of velocity - single frame
         vx = load_dat(fullfile(directory, ['ph_' num2str(j-1,'%03i') '_vd_1.dat']),[matrix(1) matrix(2) matrix(3)]);
@@ -274,7 +290,7 @@ for j = 1:nframes
         end 
         
     elseif strcmp(filetype,'hdf5')
-        set(handles.TextUpdate,'String',['Calculating Quantitative - Parameters Time Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
+        %set(handles.TextUpdate,'String',['Calculating Quantitative - Parameters Time Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
         xvel_label = append('/Data/',['ph_' num2str(j-1,'%03i') '_vd_1']);
         yvel_label = append('/Data/',['ph_' num2str(j-1,'%03i') '_vd_2']);
         zvel_label = append('/Data/',['ph_' num2str(j-1,'%03i') '_vd_3']);
@@ -296,8 +312,12 @@ for j = 1:nframes
             vy = vy - back(:,:,:,2);
             vz = vz - back(:,:,:,3);
         end
+    elseif strcmp(filetype,'dcm')
+        vx = squeeze(v(:,:,:,1,j));
+        vy = squeeze(v(:,:,:,2,j));
+        vz = squeeze(v(:,:,:,3,j));
     else
-        set(handles.TextUpdate,'String',['Calculating Quantitative (python H5 export) - Parameters Time Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
+        %set(handles.TextUpdate,'String',['Calculating Quantitative (python H5 export) - Parameters Time Frame: ' num2str(j) '/' num2str(nframes)]);drawnow;
         % use for flow python
         % Load x,y,z components of velocity (cropped) - single frame
          vx = h5read(fullfile(directory,'Flow.h5'),'/VX', ... 
@@ -315,7 +335,8 @@ for j = 1:nframes
             vx = vx - back(:,:,:,1); %subtract off background phase in x-dir
             vy = vy - back(:,:,:,2);
             vz = vz - back(:,:,:,3);
-        end     
+        end
+       
         
     end 
         %use for flow python
@@ -347,12 +368,16 @@ for j = 1:nframes
 
     % Sliding Threshold
     vTimeFrame = segmentFull.*(0.1*(v1 + v2 + v3)); %masked velocity (cm/s)
+    %size(vTimeFrame)
+    %SegPlanes(:,:,j)=vTimeFrame;
     vTimeFramerowMean = sum(vTimeFrame,2) ./ sum(vTimeFrame~=0,2); %mean vel
     flowPulsatile_val(:,j) = vTimeFramerowMean.*area_val; %TR flow (ml/s)
     maxVelFrame(:,j) = max(vTimeFrame,[],2); %max vel. each frame (cm/s)
     velPulsatile_val(:,j) = vTimeFramerowMean;%mean vel. each frame (cm/s)  
 end 
-clear COL ROW idCOL Tangent_V v1 v2 v3 vx vy vz x_full y_full z_full x y z
+
+%save('SegPlanes.mat','SegPlanes','-v7.3' );
+clear COL ROW idCOL Tangent_V v1 v2 v3 vx vy vz x_full y_full z_full x y z SegPlanes
 
 %% Compute Hemodynamic Parameters
 maxVel_val = max(maxVelFrame,[],2); %max in-plane veloc. for all frames

@@ -4,7 +4,7 @@ function [cl,branchMat,branchList,branchTextList] = feature_extraction( ...
 %   Used by: loadpcvipr.m
 %   Dependencies: centerlineX.m, centerline_new.m
 
-set(handles.TextUpdate,'String','Completing Centerline Extraction and Labeling'); drawnow;
+%set(handles.TextUpdate,'String','Completing Centerline Extraction and Labeling'); drawnow;
 
 %% Skeletonization - Vascular Tree Construction
 % New Skeleton built in functions (completes skeleton and trimming)
@@ -86,7 +86,5 @@ for n = 1:max(branchList(:,4))
     branchListSmooth(branchList(:,4)==n,4:5) = branchList(branchList(:,4)==n,4:5);
 end
 branchList = branchListSmooth;
-
-
 end
 
