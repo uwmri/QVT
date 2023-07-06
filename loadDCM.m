@@ -2,7 +2,7 @@ function [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_va
     maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
     VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
     timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-    bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullJS] = loadDCM(directory,handles)
+    bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullEx,autoFlow] = loadDCM(directory,handles)
 %loadDCM: Reads in header information and reconstructed data 
 %(velocity, vmean, etc.) and transforms data into usable matlab variables.
 %   Used by: paramMap.m
@@ -23,8 +23,7 @@ function [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_va
 BGPCdone=0; %0=do backgroun correction, 1=don't do background correction.
 VENC = 800; %may change depending on participant
 rotImAngle = 0; %may change depending on participant
-
-
+autoFlow=1; %if you want automatically extracted BC's and flow profiles.
 
 addpath(pwd)
 set(handles.TextUpdate,'String','Loading .DCM Data'); drawnow;
@@ -35,11 +34,14 @@ cd(directory)
 % LRpath=strcat(path2flow,'\dcmLR');
 % SIpath=strcat(path2flow,'\dcmSI');
 
-Anatpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__Anatomy_700";
-APpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__AP_Flow_702";
-LRpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__LR_Flow_701";
-SIpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__SI_Flow_703";
-
+% Anatpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__Anatomy_700";
+% APpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__AP_Flow_702";
+% LRpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__LR_Flow_701";
+% SIpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__SI_Flow_703";
+Anatpath="C:\Users\sdem348\Desktop\patient 19\Ax 4DFLOW 0.5 - Anatomy_400";
+APpath="C:\Users\sdem348\Desktop\patient 19\Ax 4DFLOW 0.5 - AP Flow_402";
+LRpath="C:\Users\sdem348\Desktop\patient 19\Ax 4DFLOW 0.5 - LR Flow_401";
+SIpath="C:\Users\sdem348\Desktop\patient 19\Ax 4DFLOW 0.5 - SI Flow_403";
 
 %Load each velocity and put into phase matrix
 [VAP,~] = shuffleDCM(APpath,directory,0);
@@ -171,7 +173,7 @@ elseif strcmp(SEG_TYPE,'thresh')
         vTimeFrameave,MAGcrossection,bnumMeanFlow,bnumStdvFlow,StdvFromMean,Planes] ...
         = paramMap_params_threshS(filetype,branchList,matrix,timeMIP,vMean, ...
     back,BGPCdone,directory,nframes,res,MAG,handles, v,slicespace,Exseg);
-    segmentFullJS=segmentFull;
+    segmentFullEx=segmentFull;
 else
     disp("Incorrect segmentation type selected, please select 'kmeans' or 'thresh'");
 end 

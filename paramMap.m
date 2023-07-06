@@ -92,7 +92,7 @@ global r timeMIPcrossection segmentFull vTimeFrameave velMean_val versionNum
 global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
 global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
 global VplanesAllx VplanesAlly VplanesAllz imageData caseFilePath
-global vesselsAnalyzed allNotes segmentFullJS 
+global vesselsAnalyzed allNotes segmentFullJS autoFlow
 %SD
 
 % Initial Variables
@@ -157,6 +157,11 @@ if  fileIndx > 1  %if a pre-processed case is selected
     MAGcrossection = data_struct.MAGcrossection; %magnitude (in-plane)
     segmentFull = data_struct.segmentFull; %cross-sectional plane masks
     segmentFullJS = data_struct.segmentFullJS; %cross-sectional plane masks SD
+    try
+        autoFlow = data_struct.autoFlow; %cross-sectional plane masks SD
+    catch
+        autoFlow=0;
+    end
     vTimeFrameave = data_struct.vTimeFrameave; %velocity (in-plane)
     Planes = data_struct.Planes; %outer coordinates of plane
     bnumMeanFlow = data_struct.bnumMeanFlow; %mean flow along branches
@@ -171,6 +176,9 @@ if  fileIndx > 1  %if a pre-processed case is selected
     set(handles.TextUpdate,'String','Loading Complete'); drawnow;
     pause(1)
     set(handles.TextUpdate,'String','Please Select Analysis Plane Location'); drawnow;
+    if autoFlow == 1
+        autoCollectFlow(directory)
+    end
 
 else %Load in pcvipr data from scratch
     if exist([directory filesep 'Flow.h5'],'file')
@@ -193,9 +201,8 @@ else %Load in pcvipr data from scratch
         maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
         VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-        bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullJS] ...  
+        bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullJS,autoFlow] ...  
         = loadDCM(directory,handles); %SD Segment full
-        %= loadDCM(directory,handles); %SD Segment full
     end 
 
     
@@ -229,6 +236,7 @@ else %Load in pcvipr data from scratch
     data_struct.MAGcrossection = MAGcrossection;
     data_struct.segmentFull = segmentFull;
     data_struct.segmentFullJS = segmentFullJS; %SD
+    data_struct.autoFlow = autoFlow; %SD
     data_struct.vTimeFrameave = vTimeFrameave;
     data_struct.Planes = Planes;
     data_struct.bnumMeanFlow = bnumMeanFlow;
@@ -252,7 +260,9 @@ else %Load in pcvipr data from scratch
     
     % Where to save data images and excel summary files
     SavePath = [directory filesep SummaryName];
-        
+    if autoFlow == 1
+        autoCollectFlow(directory)
+    end
     % Create excel files save summary data
     col_header = ({'Vessel Label', 'Centerline Point', 'Notes',['Max Velocity < ' num2str(VENC) 'cm/s'], ...
         'Mean Flow ml/s','Pulsatility Index','Branch Label'});
@@ -633,7 +643,7 @@ function SavePoint_Callback(hObject, eventdata, handles)
 global PointLabel nframes VENC timeres branchList timeMIPcrossection area_val
 global flowPerHeartCycle_val PI_val diam_val maxVel_val RI_val flowPulsatile_val
 global vTimeFrameave velMean_val dcm_obj fig segmentFull SavePath MAGcrossection
-global vesselsAnalyzed allNotes segmentFullJS
+global vesselsAnalyzed allNotes segmentFullJS autoFlow
 %SD
 
 vesselsAnalyzed{end+1} = PointLabel;
