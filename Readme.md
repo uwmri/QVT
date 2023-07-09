@@ -5,12 +5,9 @@ Built on QVT, some extra functionality has been added to extract time continuous
 
 Major changes from QVT include the development of an improved flow consistency metric which allows the automatic extraction of the ideal flow from each cerebral vessel. This was necessary as there are several "good" flow positions which increase the interobserver error when using this flow profile as input into patient specific modelling. 
 
-We also include the ability to import DICOM and NIFTY files instead of the .dat required in original QVT.
-
-Other functions convert the flow into periodic Fourier coefficients 
+We also include the ability to import DICOM and NIFTY files instead of the .dat required in original QVT. Resolutions can now be anisotropic.
 
 UPDATE more as this is developped.
-
 
 ## Installation ##
 Requires MATLAB version > 2018
@@ -20,9 +17,11 @@ Image Processing Toolbox (for medfilt3) \
 Curve Fitting Toolbox (for csaps) \
 Statistics and Machine Learning Toolbox (for kmeans)
 ## Usage
-Run paramMap as per QVT, once the branch has loaded, click any point for the branches of interest and save to the generated csv. 
+Run paramMap as per QVT, once the branch has loaded, click any point on branches of interest and fill in the branch label in respective major cerebral artery. If the major artery has minor branching, the label will change, to add multiple, simply comma between numbers 67,112,etc. Once the small major artery table is full, you can close the program. 
 
-Run the separate function "flow_pipeline" which will let you point to where the subject data is saved, it will take the branch ID's, and then extract the quality function over the branch and output the highest quality flows automatically. The average flow (based on quality cutoff) is used for boundary conditions. Plots of flow and error are also included in a separate csv. 
+Run the separate function "flow_pipeline_auto" which will let you point to where the subject data is saved, it will take the branch ID's, and then extract the quality function over the branch and output the highest quality flows automatically. The average flow (based on quality cutoff) is used for boundary conditions. Plots of flow and error are also included.
+
+If at any point you want to manually save your own best chosen flow, follow standard QVT instruction and run flow_pipeline_manual, filling in necessary paths at top of script.
 
 
 ### Citations ### 
