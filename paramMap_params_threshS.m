@@ -200,28 +200,21 @@ end
 StdvFromMean = flowPerHeartCycle_val;
 for n = 1:max(branchList(:,4))
     IDbranch = find(branchList(:,4)== n); %extract points for branch n
-    % Calculate near branch start
-    StdvFromMean(IDbranch(1)) = std(flowPerHeartCycle_val(IDbranch(1:3))) ./ abs(mean(flowPerHeartCycle_val(IDbranch(1:3))));
-    StdvFromMean(IDbranch(2)) = std(flowPerHeartCycle_val(IDbranch(1:4))) ./ abs(mean(flowPerHeartCycle_val(IDbranch(1:4))));
-    % Calculate for middle of branch (window width of 5)
-    for m = 1:numel(IDbranch)-4
-        %StdvFromMean(IDbranch(m+2)) = std(flowPerHeartCycle_val(IDbranch(m:m+4)))./abs(mean(flowPerHeartCycle_val(IDbranch(m:m+4))));
-        QV_meanflow_var = 1-std(flowPerHeartCycle_val(IDbranch(m:m+4)))./abs(mean(flowPerHeartCycle_val(IDbranch(m:m+4))));
-        QV_area_var = 1-(std(newarea(IDbranch(m:m+4)))./abs(mean(newarea(IDbranch(m:m+4))))); %ideal 1, range -inf,1
-        QV_circularity = mean(diam_val(IDbranch(m:m+4))); %ideal =1, range 0,1
+    len=length(IDbranch);
+    L_ID=ones([1 len]);
+    L_ID(4:end)=L_ID(4:end)+1:(len-2);
+    R_ID=3:len+2;
+    R_ID((end-2):end)=len;
+    for m = 1:len
+        QV_meanflow_var = 1-std(flowPerHeartCycle_val(IDbranch(L_ID(m):R_ID(m))))./abs(mean(flowPerHeartCycle_val(IDbranch(L_ID(m):R_ID(m)))));
+        QV_area_var = 1-(std(newarea(IDbranch(L_ID(m):R_ID(m))))./abs(mean(newarea(IDbranch(L_ID(m):R_ID(m)))))); %ideal 1, range -inf,1
+        QV_circularity = mean(diam_val(IDbranch(L_ID(m):R_ID(m)))); %ideal =1, range 0,1
         for kk=1:length(flowPulsatile_val(1,:))
-            flows_phase=flowPulsatile_val(IDbranch(m:m+4),kk);
-            std_phase(kk)=std(flows_phase);
+            flows_phase=flowPulsatile_val(IDbranch(L_ID(m):R_ID(m)),kk);
+            %std_phase(kk)=std(flows_phase);
             minmax_phase(kk)=max(flows_phase)-min(flows_phase);
         end
-        QV_tightness=1-mean(minmax_phase)./abs(mean(flowPerHeartCycle_val(IDbranch(m:m+4))));
-        StdvFromMean(IDbranch(m+2)) = QV_meanflow_var + QV_area_var + QV_circularity+QV_tightness;
-        %StdvFromMean(IDbranch(m+2)) = QV_tightness;
-        
+        QV_tightness=1-mean(minmax_phase)./abs(mean(flowPerHeartCycle_val(IDbranch(L_ID(m):R_ID(m)))));
+        StdvFromMean(IDbranch(m)) = QV_meanflow_var + QV_area_var + QV_circularity+QV_tightness;        
     end
-    % Calculate near branch end
-    StdvFromMean(IDbranch(end-1)) = std(flowPerHeartCycle_val(IDbranch(end-3:end)))./abs(mean(flowPerHeartCycle_val(IDbranch(end-3:end))));
-    StdvFromMean(IDbranch(end)) = std(flowPerHeartCycle_val(IDbranch(end-2:end)))./abs(mean(flowPerHeartCycle_val(IDbranch(end-2:end))));
 end
-%StdvFromMean = StdvFromMean - min(StdvFromMean(:)); %shift the minimum to 0
-%StdvFromMean = StdvFromMean./max(StdvFromMean(:)); %normalize range 0-1

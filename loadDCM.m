@@ -34,14 +34,10 @@ cd(directory)
 % LRpath=strcat(path2flow,'\dcmLR');
 % SIpath=strcat(path2flow,'\dcmSI');
 
-% Anatpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__Anatomy_700";
-% APpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__AP_Flow_702";
-% LRpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__LR_Flow_701";
-% SIpath="C:\Users\sdem348\Desktop\DTDS\sourcedata\Dem_20Cen107_Ctrl_1-1996\Ax_4DFLOW_05__SI_Flow_703";
-Anatpath="C:\Users\sdem348\Desktop\patient 19\Ax 4DFLOW 0.5 - Anatomy_400";
-APpath="C:\Users\sdem348\Desktop\patient 19\Ax 4DFLOW 0.5 - AP Flow_402";
-LRpath="C:\Users\sdem348\Desktop\patient 19\Ax 4DFLOW 0.5 - LR Flow_401";
-SIpath="C:\Users\sdem348\Desktop\patient 19\Ax 4DFLOW 0.5 - SI Flow_403";
+Anatpath='';
+APpath='';
+LRpath='';
+SIpath='';
 
 %Load each velocity and put into phase matrix
 [VAP,~] = shuffleDCM(APpath,directory,0);
