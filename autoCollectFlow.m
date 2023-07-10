@@ -2,6 +2,10 @@ function [] = autoCollectFlow(SVPATH)
     Artery = ["L ICA";"R ICA";"L MCA";"R MCA";"L ACA";"R ACA";"L PCA";"R PCA";"BA"];
     P = table('Size',[9,2],'VariableTypes',{'cellstr','cellstr'},'VariableNames',["Artery","BranchLabel"]);
     P.Artery=Artery;
+    if exist(fullfile('C:\Users\sdem348\Documents\MATLAB\CHM\4DFlow_ProcessingModule\','LabelledBranchesQVT.csv')) == 2
+        BNums = readLabels(SVPATH);
+        P.BranchLabel=BNums(:,3);
+    end
     fig = uifigure("Position",[100 100 350 375]);
     fig.Tag = 'testGUI_tag';
     uit = uitable(fig,"Data",P);

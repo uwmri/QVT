@@ -3,7 +3,7 @@ fid = fopen(fullfile(path,'LabelledBranchesQVT.csv'));
 %% This function just parses the filled out labelledbranches form for all branch numbers
 %% It reads line bny line then outputs the branch numbers and names into a cell
 tline = fgetl(fid);
-BNums=cell(size(9,2));
+BNums=cell(size(9,3));
 for i=1:9
 tline = fgetl(fid);
 A = strsplit(tline,',');
@@ -14,5 +14,6 @@ end
 B = strsplit(LABLE,'"');
 BNums(i,1)=A(1);
 BNums(i,2)={str2num(B{2})};
+BNums(i,3)={B{2}};
 end
 fclose(fid);
