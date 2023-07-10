@@ -2,12 +2,16 @@ clear;clc;
 %% Initialization
 path2labels='C:\Users\sdem348\Desktop\DTDS'; % just to the root folder
 load("C:\Users\sdem348\Desktop\DTDS\qvtData_ISOfix_09Jul23_2023_v1-2.mat")
-percentileCutoff=.25;
+percentileCutoff=0.2;
 plotflag=1; %0 = no plot, 1 = make plot
+plotraw=1; %0 = no plot, 1 = make plot with raw curves plotted
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Don't change below %%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Or do
 %% Load Necessities from labels and processed data
+foldername=strcat('Cutoff_',num2str(percentileCutoff));
+try mkdir(fullfile(path2labels,foldername))
+end
 Labels=readLabels(path2labels);
 BranchNum=Labels(:,2);
 TitleNames=Labels(:,1);
@@ -39,15 +43,21 @@ for i=1:9
 end
 %% Compute BBF's and Deviation Estimates
 TotalInletFlow=mean(HQflows{1,2})+mean(HQflows{2,2})+mean(HQflows{9,2});
+TotalInletFlowMin=min(HQflows{1,2})+min(HQflows{2,2})+min(HQflows{9,2});
+TotalInletFlowMax=max(HQflows{1,2})+max(HQflows{2,2})+max(HQflows{9,2});
 TotalInletFlowStd=sqrt(std(HQflows{1,4}).^2+std(HQflows{2,4}).^2+std(HQflows{9,4}).^2);
 divisionDevIn=(TotalInletFlowStd./TotalInletFlow).^2;
 %fprintf('Total Inlet Flow = %3.1f +- %3.1f mL/s\n',TotalInletFlow,TotalInletFlowStd)
 for i=3:8
     TotalOutletFlow=mean(HQflows{i,2});
+    TotalOutletFlowMin=min(HQflows{i,2});
+    TotalOutletFlowMax=max(HQflows{i,2});
     TotalOutletFlowStd=std(HQflows{i,4});
     divisionDevOut=(TotalOutletFlowStd./TotalOutletFlow).^2;
-    BFF(i-2,1)=TotalOutletFlow/TotalInletFlow;
-    BFFerror(i-2,1)=BFF(i-2,1).*sqrt(divisionDevIn+divisionDevOut);
+    BFF(i-2,1)=TotalOutletFlow/TotalInletFlow; %mean BFF
+    BFF(i-2,2)=BFF(i-2,1).*sqrt(divisionDevIn+divisionDevOut); %std BFF
+    BFF(i-2,3)=TotalOutletFlowMax/TotalInletFlow; %max BFF
+    BFF(i-2,4)=TotalOutletFlowMin/TotalInletFlow; %min BFF
     %fprintf(strcat(TitleNames{i},' flow = %3.1f +- %3.1f mL/s\n'),TotalOutletFlow,TotalOutletFlowStd)
 end
 T = max(time); %period of average heartbeat length from 4Dflow
@@ -55,12 +65,11 @@ v_bc_name = {TitleNames{1};TitleNames{2};TitleNames{9};'Sum';'T'};
 v_bc = [mean(HQflows{1,2});mean(HQflows{2,2});mean(HQflows{9,2});TotalInletFlow;T];
 v_bcstd = [std(HQflows{1,4});std(HQflows{2,4});std(HQflows{9,4});TotalInletFlowStd;0];
 BFF_name = {'MCA_L';'MCA_R';'ACA_L';'ACA_R';'PCA_L';'PCA_R'};
-bff = BFF(:,1);
-outputname = path2labels + "\Flow_BFFs_and_BCs_" + char(string(percentileCutoff)) + "_auto.xlsx"; %File Name in location of subject
+outputname = strcat(path2labels,'\',foldername,'\Flow_ModelConfig_auto.xlsx'); %File Name in location of subject
 writecell(v_bc_name, outputname, 'Sheet', 'BC', 'Range', 'A1');
 writematrix([v_bc v_bcstd], outputname, 'Sheet', 'BC', 'Range', 'B1');
 writecell(BFF_name, outputname, 'Sheet', 'BFF', 'Range', 'A1');
-writematrix([BFF BFFerror], outputname, 'Sheet', 'BFF', 'Range', 'B1');
+writematrix(BFF, outputname, 'Sheet', 'BFF', 'Range', 'B1');
 %% Fit Fourier Series to Data
 sheetNames = {'Left ICA Cavernous_T_resolved','Right ICA Cavernous_T_resolved',...
     'Left MCA_T_resolved','Right MCA_T_resolved',...
@@ -77,7 +86,6 @@ for i = 1:9
     V = fit(x',y',myFitType);
     coeffNames = coeffnames(V); % Get the coefficient names
     C = coeffvalues(V); % Get the coefficient values
-    outputname = path2labels + "\FlowCoeffs_" + char(string(percentileCutoff)) + "_auto.xlsx";
     sheet=sheetNames{i};
 
     % Write the coefficient data to the excel file
@@ -123,10 +131,16 @@ if plotflag ~= 0
         MEAN=HQflows{i,2}';
         STD=HQflows{i,3}';
         h=fill([time';flipud(time')],[MEAN-2*STD;flipud(MEAN+2*STD)],[0 0 0],'Linestyle','None');
-        set(h,'facealpha',.2)
+        set(h,'facealpha',.1)
         hold on
+        if plotraw == 1
+            rflow=HQflows{i,1};
+            for j=1:length(rflow(:,1))
+                plot(time,rflow(j,:),'-','Color',[0.2 0.5 0.9 0.5])
+            end
+        end
         plot(time,MEAN,'k*','MarkerSize',2)
-        plot(FitTime,FitFlow(i,:),'b-')
+        plot(FitTime,FitFlow(i,:),'k-')
         title(TitleNames{i})
         ylim([Mins(i) Maxs(i)])
         xlim([0 max(time)])
