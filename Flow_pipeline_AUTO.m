@@ -71,11 +71,16 @@ writematrix([v_bc v_bcstd], outputname, 'Sheet', 'BC', 'Range', 'B1');
 writecell(BFF_name, outputname, 'Sheet', 'BFF', 'Range', 'A1');
 writematrix(BFF, outputname, 'Sheet', 'BFF', 'Range', 'B1');
 %% Fit Fourier Series to Data
-sheetNames = {'Left ICA Cavernous_T_resolved','Right ICA Cavernous_T_resolved',...
-    'Left MCA_T_resolved','Right MCA_T_resolved',...
-    'Left ACA_T_resolved','Right ACA_T_resolved',...
-    'Left PCA_T_resolved','Right PCA_T_resolved',...
-    'Basilar_T_resolved'}; %for saving to comply with current pipeline, but should change eventually
+% sheetNames = {'Left ICA Cavernous_T_resolved','Right ICA Cavernous_T_resolved',...
+%     'Left MCA_T_resolved','Right MCA_T_resolved',...
+%     'Left ACA_T_resolved','Right ACA_T_resolved',...
+%     'Left PCA_T_resolved','Right PCA_T_resolved',...
+%     'Basilar_T_resolved'}; %for saving to comply with current pipeline, but should change eventually
+sheetNames = {'Left ICA','Right ICA',...
+    'Left MCA','Right MCA',...
+    'Left ACA','Right ACA',...
+    'Left PCA','Right PCA',...
+    'Basilar'}; %for saving to comply with current pipeline, but should change eventually
 for i = 1:9
     y = HQflows{i,2}; x = time;
     % Define the parameter value outside the fittype
@@ -92,20 +97,21 @@ for i = 1:9
     writecell(coeffNames, outputname, 'Sheet', sheet, 'Range', 'A1');
     writematrix(C', outputname, 'Sheet', sheet, 'Range', 'B1');
     
+    rawsheetname=strcat(sheet,' raw');
     % Write in the raw flows, error, and time (for plotting or comparing the
     % model against)
     FlowNames={'flow_mean';'flow_std';'time'};
     FlowVals=[y;HQflows{i,3};time];
-    writecell(FlowNames, outputname, 'Sheet', sheet, 'Range', 'C1');
-    writematrix(FlowVals, outputname, 'Sheet', sheet, 'Range', 'D1');
+    writecell(FlowNames, outputname, 'Sheet', rawsheetname, 'Range', 'A1');
+    writematrix(FlowVals, outputname, 'Sheet', rawsheetname, 'Range', 'B1');
 
     % write in interpolation data (saves running the coefficients later)
     FitTime=0:T/99:T;
     FitFlow(i,:)=myEquation(C(1),C(2),C(3),C(4),C(5),C(6),C(7),C(8),C(9),C(10),C(11),C(12),C(13),C(14),C(15),C(16),C(17),C(18),C(19), FitTime, T);
     FlowNames={'InterpFlow';'InterpTime'};
     FlowVals=[FitFlow(i,:);FitTime];
-    writecell(FlowNames, outputname, 'Sheet', sheet, 'Range', 'C4');
-    writematrix(FlowVals, outputname, 'Sheet', sheet, 'Range', 'D4');
+    writecell(FlowNames, outputname, 'Sheet', rawsheetname, 'Range', 'A4');
+    writematrix(FlowVals, outputname, 'Sheet', rawsheetname, 'Range', 'B4');
 end
 
 if plotflag ~= 0
@@ -130,13 +136,13 @@ if plotflag ~= 0
         nexttile
         MEAN=HQflows{i,2}';
         STD=HQflows{i,3}';
-        h=fill([time';flipud(time')],[MEAN-2*STD;flipud(MEAN+2*STD)],[0 0 0],'Linestyle','None');
-        set(h,'facealpha',.1)
+        h=fill([time';flipud(time')],[MEAN-STD;flipud(MEAN+STD)],[0 0 0],'Linestyle','None');
+        set(h,'facealpha',.3)
         hold on
         if plotraw == 1
             rflow=HQflows{i,1};
             for j=1:length(rflow(:,1))
-                plot(time,rflow(j,:),'-','Color',[0.2 0.5 0.9 0.5])
+                plot(time,rflow(j,:),'-','Color',[0.2 0.5 0.9 0.3])
             end
         end
         plot(time,MEAN,'k*','MarkerSize',2)
