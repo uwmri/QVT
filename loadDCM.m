@@ -15,51 +15,37 @@ function [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_va
 %
 %Updated by Sergio Dempsey
 %Date:30/05/2023
-%% Read Header
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%% Change in here %%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Run what you need to to create the v, MAG, and dcminfo ONLY
+%% Initialization
 BGPCdone=0; %0=do backgroun correction, 1=don't do background correction.
 VENC = 800; %may change depending on participant
-rotImAngle = 0; %may change depending on participant
-autoFlow=1; %if you want automatically extracted BC's and flow profiles.
+autoFlow=1; %if you want automatically extracted BC's and flow profiles 0 if not.
+res='0.5'; %Only needed if you have multiple resolutions in your patient folder 
+% AND the resolution is named in the file folder as "0.5" or 05
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%% Don't change below %%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Or do
 addpath(pwd)
 set(handles.TextUpdate,'String','Loading .DCM Data'); drawnow;
 cd(directory)
-% path2flow=strcat(directory,'\flow');
-% Anatpath=strcat(path2flow,'\dcmAnat');
-% APpath=strcat(path2flow,'\dcmAP');
-% LRpath=strcat(path2flow,'\dcmLR');
-% SIpath=strcat(path2flow,'\dcmSI');
-
-Anatpath='';
-APpath='';
-LRpath='';
-SIpath='';
+[Anatpath,APpath,LRpath,SIpath] = retFlowFolders(directory,res);
 
 %Load each velocity and put into phase matrix
 [VAP,~] = shuffleDCM(APpath,directory,0);
 [a,c,b,d]=size(VAP);
 v=zeros([a,c,b,3,d],'single');
-for i=1:1:20
-    v(:,:,:,1,i)=imrotate(squeeze(VAP(:,:,:,i)),rotImAngle);
-end
+v(:,:,:,1,:)=squeeze(VAP(:,:,:,:));
 clear VAP
 set(handles.TextUpdate,'String','Loading .DCM Data 20%'); drawnow;
 [VLR,~] = shuffleDCM(LRpath,directory,0);
-for i=1:1:20
-    v(:,:,:,2,i)=imrotate(squeeze(VLR(:,:,:,i)),rotImAngle);
-end
+v(:,:,:,2,:)=squeeze(VLR(:,:,:,:));
 clear VLR
 set(handles.TextUpdate,'String','Loading .DCM Data 40%'); drawnow;
 [VSI,~] = shuffleDCM(SIpath,directory,0);
-for i=1:1:20
-    v(:,:,:,3,i)=imrotate(squeeze(VSI(:,:,:,i)),rotImAngle);
-end
+v(:,:,:,3,:)=squeeze(VSI(:,:,:,:));
 clear VSI
 set(handles.TextUpdate,'String','Loading .DCM Data 60%'); drawnow;
+
 % Convert to velocity
 v = (2 * (v-(-VENC))/(VENC-(-VENC)) - 1) * VENC; %range values to VENCs
 vMean = mean(v,5);
@@ -69,12 +55,9 @@ set(handles.TextUpdate,'String','Loading .DCM Data 80%'); drawnow;
 %Load MAGnitude image
 [MAG,dcminfo] = shuffleDCM(Anatpath,directory,0);
 MAG = mean(MAG,4);
-MAG=imrotate(MAG(:,:,:),rotImAngle);
+%MAG=imrotate(MAG(:,:,:),rotImAngle);
 set(handles.TextUpdate,'String','Loading .DCM Data 100%'); drawnow;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%% Don't change below %%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 filetype = 'dcm';
 nframes = dcminfo.CardiacNumberOfImages; %number of reconstructed frames
 timeres = dcminfo.NominalInterval/nframes; %temporal resolution (ms)
@@ -83,19 +66,7 @@ slicespace=dcminfo.SpacingBetweenSlices;
 matrix(1) = dcminfo.Rows; %number of pixels in rows
 matrix(2) = dcminfo.Columns;
 matrix(3) = length(MAG(1,1,:)); %number of slices
-%% This part can be uncommented if you work within a BIDS directory
-% PWD=directory;
-% datapath=split(PWD,'\');
-% derivpath=datapath{1};
-% for i=2:(length(datapath)-1)
-%     derivpath=strcat(derivpath,'\',datapath{i});
-% end
-% derivpath=strcat(derivpath,'\derivatives\QVT\',datapath{end});
-% if ~exist(derivpath, 'dir')
-%     mkdir(derivpath);
-% end
-% cd(derivpath)
-% directory=derivpath;
+
 %% Import Complex Difference
 set(handles.TextUpdate,'String','Loading Complex Difference Data'); drawnow;
 timeMIP = calc_angio(MAG, vMean, VENC);
@@ -119,8 +90,8 @@ if ~BGPCdone
     end 
     clear X Y Z poly_fitx poly_fity poly_fitz xrange yrange zrange
 end
-%Make a list loader to pick specific segmentation file.
-%% Find optimum global threshold 
+
+%% Find optimum global threshold for total branch segmentation
 set(handles.TextUpdate,'String','Segmenting and creating Tree'); drawnow;
 step = 0.001; %step size for sliding threshold
 UPthresh = 0.8; %max upper threshold when creating Sval curvature plot
@@ -137,23 +108,17 @@ imageData.CD = timeMIP;
 imageData.V = vMean;
 imageData.Segmented = segment;
 imageData.Header = dcminfo;
+
 %% Feature Extraction
 % Get trim and create the centerline data
 sortingCriteria = 3; %sorts branches by junctions/intersects 
 spurLength = 15; %minimum branch length (removes short spurs)
 [~,~,branchList,~] = feature_extraction(sortingCriteria,spurLength,vMean,segment,handles);
-%% Load External Segmentation
-% cd('C:\Users\sdem348\Desktop\DTDS\BIDSdata\derivatives\VesselSeg\sub-001\SegmentedTOF')
-% JSseg = niftiread('recon_pred_4Dangio_d2430e79.nii');
-% JSseg = niftiread('recon_pred_4DTOF_test5_d2430e79.nii');
-% cd(directory)
-% JSseg(JSseg==min(JSseg(:)))=0;
-% JSseg(JSseg==max(JSseg(:)))=1;
-% JSseg =flip(JSseg,3);
-% JSseg =flip(JSseg,1);
-% JSseg =imrotate(JSseg(:,:,:),90);
-Exseg=segment;
+
+%% You can load another segmentation here if you want which will overlap on images
+Exseg=segment; %for now, dummy copy
 %[~,~,branchList2,~] = feature_extraction(sortingCriteria,spurLength,vMean,logical(JSseg),[]);
+
 %% SEND FOR PROCESSING
 % Flow parameter calculation, bulk of code is in paramMap_parameters.m
 SEG_TYPE = 'thresh'; %kmeans or thresh
