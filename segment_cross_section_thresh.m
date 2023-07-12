@@ -1,7 +1,6 @@
-function [area_val, diam_val, segmentFull, areanew] = segment_cross_section_thresh(segments,...
+function [area_val, diam_val, segmentFull] = segment_cross_section_thresh(segments,...
     width,timeMIPcrossection,vTimeFrameave,MAGcrossection,res,r,InterpVals,pixelSpace)
     area_val = zeros(segments,1);
-    areanew = zeros(segments,1);
     diam_val = zeros(segments,1);
     segmentFull = zeros([segments,(width).^2]);
     for n = 1:segments
@@ -53,11 +52,9 @@ function [area_val, diam_val, segmentFull, areanew] = segment_cross_section_thre
         segment = L==LabUse(CenIdx); %cut out other centroids
         %segment = imopen(segment,ones(3,3)); %morphological opening
         % Vessel area measurements
-        dArea = (res/10).^2; %pixel size (cm^2)
+
+        dArea = (res/10)*(pixelSpace(n)/10); %pixel size (cm^2)
         area_val(n,1) = sum(segment(:))*dArea*((2*r+1)/(2*r*InterpVals+1))^2;
-        
-        dAreaNew = (res/10)*(pixelSpace(n)/10); %pixel size (cm^2)
-        areanew(n,1) = sum(segment(:))*dAreaNew*((2*r+1)/(2*r*InterpVals+1))^2;
 
         segmentFull(n,:) = segment(:);
         % New with ratios of areas. Ratio of smallest inner circle over

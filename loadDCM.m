@@ -2,7 +2,7 @@ function [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_va
     maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
     VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
     timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-    bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullEx,autoFlow] = loadDCM(directory,handles)
+    bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullEx,autoFlow,pixelSpace] = loadDCM(directory,handles)
 %loadDCM: Reads in header information and reconstructed data 
 %(velocity, vmean, etc.) and transforms data into usable matlab variables.
 %   Used by: paramMap.m
@@ -70,6 +70,7 @@ matrix(3) = length(MAG(1,1,:)); %number of slices
 %% Import Complex Difference
 set(handles.TextUpdate,'String','Loading Complex Difference Data'); drawnow;
 timeMIP = calc_angio(MAG, vMean, VENC);
+
 %% Manual Background Phase Correction (if necessary)
 back = zeros(size(vMean),'single');
 if ~BGPCdone
@@ -116,7 +117,7 @@ spurLength = 15; %minimum branch length (removes short spurs)
 [~,~,branchList,~] = feature_extraction(sortingCriteria,spurLength,vMean,segment,handles);
 
 %% You can load another segmentation here if you want which will overlap on images
-Exseg=segment; %for now, dummy copy
+Exseg=segment; %for now, dummy copy, can do feature extraction
 %[~,~,branchList2,~] = feature_extraction(sortingCriteria,spurLength,vMean,logical(JSseg),[]);
 
 %% SEND FOR PROCESSING
@@ -131,10 +132,9 @@ if strcmp(SEG_TYPE,'kmeans')
 elseif strcmp(SEG_TYPE,'thresh')
     [area_val,diam_val,flowPerHeartCycle_val,maxVel_val,PI_val,RI_val,flowPulsatile_val,...
         velMean_val,VplanesAllx,VplanesAlly,VplanesAllz,r,timeMIPcrossection,segmentFull,...
-        vTimeFrameave,MAGcrossection,bnumMeanFlow,bnumStdvFlow,StdvFromMean,Planes] ...
+        vTimeFrameave,MAGcrossection,bnumMeanFlow,bnumStdvFlow,StdvFromMean,Planes,pixelSpace,segmentFullEx] ...
         = paramMap_params_threshS(filetype,branchList,matrix,timeMIP,vMean, ...
     back,BGPCdone,directory,nframes,res,MAG,handles, v,slicespace,Exseg);
-    segmentFullEx=segmentFull;
 else
     disp("Incorrect segmentation type selected, please select 'kmeans' or 'thresh'");
 end 
