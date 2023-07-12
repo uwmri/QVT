@@ -1,7 +1,8 @@
 clear;clc;
 %% Initialization
-path2labels='C:\Users\sdem348\Desktop\DTDS'; % just to the root folder
-load("C:\Users\sdem348\Desktop\DTDS\qvtData_ISOfix_09Jul23_2023_v1-2.mat")
+path2bids='Z:\Sergio\HITH_Control';
+subject='sub-001';
+path2labels=fullfile(path2bids,'derivatives\QVT',subject); % just to the root folder, can only need this if not using bids
 percentileCutoff=0.2;
 plotflag=1; %0 = no plot, 1 = make plot
 plotraw=1; %0 = no plot, 1 = make plot with raw curves plotted
@@ -9,6 +10,8 @@ plotraw=1; %0 = no plot, 1 = make plot with raw curves plotted
 %%%%%%%% Don't change below %%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Or do
 %% Load Necessities from labels and processed data
+DataName = dir(fullfile(path2labels,'*.mat'));
+load(fullfile(path2labels,DataName.name));
 foldername=strcat('Cutoff_',num2str(percentileCutoff));
 try mkdir(fullfile(path2labels,foldername))
 end

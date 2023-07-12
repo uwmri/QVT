@@ -281,7 +281,7 @@ fig = figure(1); cla
 %set(fig,'Position',[2325 57 1508 1047]); %WORK
 %set(fig,'Position',[1856 37 1416 954]); %HOME
 
-hpatch = patch(isosurface(permute(segment,[2 1 3]),0.5),'FaceAlpha',0.15); %bw iso angiogram
+hpatch = patch(isosurface(permute(segment,[2 1 3]),0.5),'FaceAlpha',0.0); %bw iso angiogram
 reducepatch(hpatch,0.7);
 set(hpatch,'FaceColor','white','EdgeColor', 'none','PickableParts','none');
 set(gcf,'color','black');
