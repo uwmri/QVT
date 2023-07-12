@@ -5,15 +5,21 @@ fid = fopen(fullfile(path,'LabelledBranchesQVT.csv'));
 tline = fgetl(fid);
 BNums=cell(size(9,3));
 for i=1:9
-tline = fgetl(fid);
-A = strsplit(tline,',');
-LABLE=A{2};
-for j=2:length(A)-1
-    LABLE=append(LABLE,',',A{j+1});
-end
-B = strsplit(LABLE,'"');
-BNums(i,1)=A(1);
-BNums(i,2)={str2num(B{2})};
-BNums(i,3)={B{2}};
+    tline = fgetl(fid);
+    A = strsplit(tline,',');
+    LABLE=A{2};
+    for j=2:length(A)-1
+        LABLE=append(LABLE,',',A{j+1});
+    end
+    B = strsplit(LABLE,'"');
+    if length(B)>1
+        BNums(i,1)=A(1);
+        BNums(i,2)={str2num(B{2})};
+        BNums(i,3)={B{2}};
+    else
+        BNums(i,1)=A(1);
+        BNums(i,2)={str2num(B{1})};
+        BNums(i,3)={B{1}};
+    end
 end
 fclose(fid);
