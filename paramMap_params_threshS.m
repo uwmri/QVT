@@ -1,6 +1,6 @@
 function [area_val,diam_val,flowPerHeartCycle_val,maxVel_val,PI_val,RI_val,flowPulsatile_val,...
     velMean_val,VplanesAllx,VplanesAlly,VplanesAllz,r,timeMIPcrossection,segmentFull,...
-    vTimeFrameave,MAGcrossection,bnumMeanFlow,bnumStdvFlow,StdvFromMean,Planes,segmentFullJS] ...
+    vTimeFrameave,MAGcrossection,bnumMeanFlow,bnumStdvFlow,StdvFromMean,Planes,pixelSpace,segmentFullJS] ...
     = paramMap_params_threshS(varargin)
 %filetype,branchList,matrix,timeMIP,vMean,back,...
   %  BGPCdone,directory,nframes,res,MAG,IDXstart,IDXend,handles)
@@ -32,12 +32,12 @@ segments=length(branchList); %number of segments
 
 %% Calculate out of plane length distortion
 xyNorm=[0 0 1];
-pixelspace=zeros([segments,1]);
+pixelSpace=zeros([segments,1]);
 for i=1:length(Tangent_V(:,1))
     T=Tangent_V(i,:)';
     DOT=xyNorm*T;
     RAD=acos(DOT);
-    pixelspace(i)=res+(sliceSpace-res)*sin(RAD); %New pixel space
+    pixelSpace(i)=res+(sliceSpace-res)*sin(RAD); %New pixel space
 end
 clear DOT RAD T xyNorm
 %% Interpolate Matrices Into the Planes
@@ -60,8 +60,8 @@ vTimeFrameave = sqrt(temp(:,:,1).^2 + temp(:,:,2).^2 + temp(:,:,3).^2); %(mm/s)
 clear v1 v2 v3 MAG timeMIP temp vtimeave
 %% In-Plane Segmentation
 set(handles.TextUpdate,'String','Performing In-Plane Segmentation');drawnow;
-[area_val,diam_val,segmentFull,newarea] = segment_cross_section_thresh(segments,width,timeMIPcrossection,vTimeFrameave,MAGcrossection,res,r,InterpVals,pixelspace);
-if length(varargin) == 15
+[area_val,diam_val,segmentFull] = segment_cross_section_thresh(segments,width,timeMIPcrossection,vTimeFrameave,MAGcrossection,res,r,InterpVals,pixelSpace);
+if length(varargin) == 16
     Exseg=varargin{15};
     [Excross] = interp_vol_to_planes(single(Exseg),x,y,z,x_full,y_full,z_full,width,segments);
     [~,~,segmentFullJS] = segment_cross_section_ExternalSeg(segments,width,Excross,res,r,InterpVals);
@@ -174,9 +174,8 @@ for j = 1:nframes
     %size(vTimeFrame)
     %SegPlanes(:,:,j)=vTimeFrame;
     vTimeFramerowMean = sum(vTimeFrame,2) ./ sum(vTimeFrame~=0,2); %mean vel
-    flowPulsatile_val(:,j) = vTimeFramerowMean.*newarea; %TR flow (ml/s)
-    %maxVelFrame(:,j) = max(vTimeFrame,[],2); %max vel. each frame (cm/s)
-    maxVelFrame(:,j) = ((newarea./area_val)-1).*100; %max(vTimeFrame,[],2); %max vel. each frame (cm/s)
+    flowPulsatile_val(:,j) = vTimeFramerowMean.*area_val; %TR flow (ml/s)
+    maxVelFrame(:,j) = max(vTimeFrame,[],2); %max vel. each frame (cm/s)
     velPulsatile_val(:,j) = vTimeFramerowMean;%mean vel. each frame (cm/s)  
 end 
 %save('SegPlanes.mat','SegPlanes','-v7.3' );
@@ -207,7 +206,7 @@ for n = 1:max(branchList(:,4))
     R_ID((end-2):end)=len;
     for m = 1:len
         QV_meanflow_var = 1-std(flowPerHeartCycle_val(IDbranch(L_ID(m):R_ID(m))))./abs(mean(flowPerHeartCycle_val(IDbranch(L_ID(m):R_ID(m)))));
-        QV_area_var = 1-(std(newarea(IDbranch(L_ID(m):R_ID(m))))./abs(mean(newarea(IDbranch(L_ID(m):R_ID(m)))))); %ideal 1, range -inf,1
+        QV_area_var = 1-(std(area_val(IDbranch(L_ID(m):R_ID(m))))./abs(mean(area_val(IDbranch(L_ID(m):R_ID(m)))))); %ideal 1, range -inf,1
         QV_circularity = mean(diam_val(IDbranch(L_ID(m):R_ID(m)))); %ideal =1, range 0,1
         for kk=1:length(flowPulsatile_val(1,:))
             flows_phase=flowPulsatile_val(IDbranch(L_ID(m):R_ID(m)),kk);

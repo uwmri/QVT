@@ -92,7 +92,7 @@ global r timeMIPcrossection segmentFull vTimeFrameave velMean_val versionNum
 global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
 global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
 global VplanesAllx VplanesAlly VplanesAllz imageData caseFilePath
-global vesselsAnalyzed allNotes segmentFullJS autoFlow
+global vesselsAnalyzed allNotes segmentFullJS autoFlow pixelSpace
 %SD
 
 % Initial Variables
@@ -157,6 +157,7 @@ if  fileIndx > 1  %if a pre-processed case is selected
     MAGcrossection = data_struct.MAGcrossection; %magnitude (in-plane)
     segmentFull = data_struct.segmentFull; %cross-sectional plane masks
     segmentFullJS = data_struct.segmentFullJS; %cross-sectional plane masks SD
+    pixelSpace = data_struct.pixelSpace; 
     try
         autoFlow = data_struct.autoFlow; %cross-sectional plane masks SD
     catch
@@ -201,11 +202,10 @@ else %Load in pcvipr data from scratch
         maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
         VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-        bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullJS,autoFlow] ...  
+        bnumMeanFlow,bnumStdvFlow,StdvFromMean,segmentFullJS,autoFlow,pixelSpace] ...  
         = loadDCM(directory,handles); %SD Segment full
     end 
 
-    
     directory = uigetdir; %select saving dir 
     % Save all variables needed to run parametertool. This will be used
     % later to load in data faster instead of having to reload all data.
@@ -213,44 +213,13 @@ else %Load in pcvipr data from scratch
     time = datestr(now);
     saveState = [time(1:2) time(4:6) time(10:11) '_' time(13:14) time(16:17) '_' versionNum];
     set(handles.TextUpdate,'String',['Saving Data as qvtData_ISOfix_' saveState '.mat']); drawnow;
-    
-    data_struct = [];
-    data_struct.directory = directory;
-    data_struct.area_val = area_val;
-    data_struct.diam_val = diam_val;
-    data_struct.branchList = branchList;
-    data_struct.flowPerHeartCycle_val = flowPerHeartCycle_val;
-    data_struct.maxVel_val = maxVel_val;
-    data_struct.velMean_val = velMean_val;
-    data_struct.nframes = nframes;
-    data_struct.matrix = matrix;
-    data_struct.res = res;
-    data_struct.timeres = timeres;
-    data_struct.VENC = VENC;
-    data_struct.segment = segment;
-    data_struct.PI_val = PI_val;
-    data_struct.RI_val = RI_val;
-    data_struct.flowPulsatile_val = flowPulsatile_val;
-    data_struct.r = r;
-    data_struct.timeMIPcrossection = timeMIPcrossection;
-    data_struct.MAGcrossection = MAGcrossection;
-    data_struct.segmentFull = segmentFull;
-    data_struct.segmentFullJS = segmentFullJS; %SD
-    data_struct.autoFlow = autoFlow; %SD
-    data_struct.vTimeFrameave = vTimeFrameave;
-    data_struct.Planes = Planes;
-    data_struct.bnumMeanFlow = bnumMeanFlow;
-    data_struct.bnumStdvFlow = bnumStdvFlow;
-    data_struct.StdvFromMean = StdvFromMean;
-    
-    Vel_Time_Res.VplanesAllx = VplanesAllx; %TR vel planes (uninterped)
-    Vel_Time_Res.VplanesAlly = VplanesAlly;
-    Vel_Time_Res.VplanesAllz = VplanesAllz;
-    
-    
     % Saves processed data in same location as pcvipr.mat files
     caseFilePath = fullfile(directory,['qvtData_ISOfix_' saveState '.mat']);
-    save(caseFilePath,'data_struct','Vel_Time_Res','imageData')
+    
+    % save the data
+    saveQVTData(directory,area_val,diam_val,branchList,flowPerHeartCycle_val,maxVel_val,velMean_val,nframes,matrix,res,timeres,...
+    VENC,segment,PI_val,RI_val,flowPulsatile_val,r, timeMIPcrossection ,MAGcrossection,segmentFull,segmentFullJS,autoFlow,vTimeFrameave,...
+    Planes,bnumMeanFlow,bnumStdvFlow,StdvFromMean,pixelSpace,VplanesAllx,VplanesAlly,VplanesAllz,imageData,caseFilePath)
     
     % This will be the name used for the Excel file
     finalFolder = regexp(directory,filesep,'split');
@@ -281,9 +250,9 @@ fig = figure(1); cla
 %set(fig,'Position',[2325 57 1508 1047]); %WORK
 %set(fig,'Position',[1856 37 1416 954]); %HOME
 
-hpatch = patch(isosurface(permute(segment,[2 1 3]),0.5),'FaceAlpha',0.0); %bw iso angiogram
-reducepatch(hpatch,0.7);
-set(hpatch,'FaceColor','white','EdgeColor', 'none','PickableParts','none');
+%hpatch = patch(isosurface(permute(segment,[2 1 3]),0.5),'FaceAlpha',0.0); %bw iso angiogram
+%reducepatch(hpatch,0.7);
+%set(hpatch,'FaceColor','white','EdgeColor', 'none','PickableParts','none');
 set(gcf,'color','black');
 axis off tight
 view([1 0 0]);
@@ -547,11 +516,11 @@ PointLabel = contents{get(hObject,'Value')};
 % --- Executes on button press in manualSeg.
 function manualSeg_Callback(hObject, eventdata, handles)
 global dcm_obj branchList timeMIPcrossection segmentFull SavePath caseFilePath
-global area_val flowPerHeartCycle_val maxVel_val r res nframes
-global flowPulsatile_val PI_val RI_val velMean_val 
-global VplanesAllx VplanesAlly VplanesAllz PointLabel
-% global bnumStdvFlow bnumMeanFlow StdvFromMean diam_val 
-%% NOTE, THE MANUAL SEGMENTATION IS NOT CURRENTLY UPDATED WITH NEW AREA.
+global area_val flowPerHeartCycle_val maxVel_val r res nframes matrix timeres 
+global flowPulsatile_val PI_val RI_val velMean_val directory VENC segment
+global VplanesAllx VplanesAlly VplanesAllz PointLabel diam_val MAGcrossection 
+global segmentFullJS autoFlow vTimeFrameave Planes bnumMeanFlow bnumStdvFlow
+global imageData pixelSpace StdvFromMean
 
 info_struct = getCursorInfo(dcm_obj);
 ptList = [info_struct.Position];
@@ -568,7 +537,7 @@ end
 % Gives associated branch number if full branch point is wanted
 bnum = branchList(pindex,4);
 Logical_branch = branchList(:,4) ~= bnum;
-
+% fprintf('%3.5f\n',bnum)
 % OUTPUT +/- points use this
 index_range = pindex-2:pindex+2;
 
@@ -592,7 +561,8 @@ for q = 1:length(index_range)
     
     oldMask = reshape(segmentFull(INDEX,:),[81 81]);
     InterpVals = 4; %choose the interpolation between points
-    dArea = (res/10)^2; %pixel size (cm^2)
+    
+    dArea = (res/10)*(pixelSpace(INDEX)/10); %pixel size (cm^2)
     area = sum(roiMask(:))*dArea*((2*r+1)/(2*r*InterpVals+1))^2;
     for n=1:nframes
         v1 = squeeze(VplanesAllx(INDEX,:,n));
@@ -616,10 +586,18 @@ for q = 1:length(index_range)
     velMean_val(INDEX) = sum(velPulsatile_val)./(nframes); %TA in-plane velocities
     segmentFull(INDEX,:) = roiMask(:);
     area_val(INDEX,1) = area;
-
     PI_val(INDEX) = abs( max(flowPulsatile_val(INDEX,:)) - min(flowPulsatile_val(INDEX,:)) )./mean(flowPulsatile_val(INDEX,:));
     RI_val(INDEX) = abs( max(flowPulsatile_val(INDEX,:)) - min(flowPulsatile_val(INDEX,:)) )./max(flowPulsatile_val(INDEX,:));
     
+    segmentT = roiMask;
+    D = bwdist(~segmentT); %euclidean distance transform, this uses an inverse segment (zeros in vessel, which then returns max distance to a corresponding vessel boundary.
+    Rin = max(D(:)); %distance from center to closest non-zero entry
+    [xLoc,yLoc] = find(bwperim(segmentT)); %get perimeter
+    D = pdist2([xLoc,yLoc],[xLoc,yLoc]); %distance b/w perimeter points
+    Rout = max(D(:))/2; %radius of largest outer circle
+    diam_val(INDEX,1) = Rin^2/Rout^2; %ratio of areas
+    diam_val(diam_val==inf) = 0;
+
     segName = regexprep(PointLabel, ' ', '_');
     segName = [segName '_' num2str(INDEX)];
     segFolder = [SavePath filesep 'manual_seg'];
@@ -633,7 +611,34 @@ for q = 1:length(index_range)
     saveas(fseg,imagePath);
     close(fseg);
     close(fh)
-end 
+end
+
+for n = bnum
+    IDbranch = find(branchList(:,4)== n); %extract points for branch n
+    len=length(IDbranch);
+    L_ID=ones([1 len]);
+    L_ID(4:end)=L_ID(4:end)+1:(len-2);
+    R_ID=3:len+2;
+    R_ID((end-2):end)=len;
+    for m = 1:len
+        QV_meanflow_var = 1-std(flowPerHeartCycle_val(IDbranch(L_ID(m):R_ID(m))))./abs(mean(flowPerHeartCycle_val(IDbranch(L_ID(m):R_ID(m)))));
+        QV_area_var = 1-(std(area_val(IDbranch(L_ID(m):R_ID(m))))./abs(mean(area_val(IDbranch(L_ID(m):R_ID(m)))))); %ideal 1, range -inf,1
+        QV_circularity = mean(diam_val(IDbranch(L_ID(m):R_ID(m)))); %ideal =1, range 0,1
+        for kk=1:length(flowPulsatile_val(1,:))
+            flows_phase=flowPulsatile_val(IDbranch(L_ID(m):R_ID(m)),kk);
+            %std_phase(kk)=std(flows_phase);
+            minmax_phase(kk)=max(flows_phase)-min(flows_phase);
+        end
+        QV_tightness=1-mean(minmax_phase)./abs(mean(flowPerHeartCycle_val(IDbranch(L_ID(m):R_ID(m)))));
+        StdvFromMean(IDbranch(m)) = QV_meanflow_var + QV_area_var + QV_circularity+QV_tightness;        
+    end
+end
+
+set(handles.TextUpdate,'String','Re Saving Data with Manual Update');drawnow;
+saveQVTData(directory,area_val,diam_val,branchList,flowPerHeartCycle_val,maxVel_val,velMean_val,nframes,matrix,res,timeres,...
+    VENC,segment,PI_val,RI_val,flowPulsatile_val,r, timeMIPcrossection ,MAGcrossection,segmentFull,segmentFullJS,autoFlow,vTimeFrameave,...
+    Planes,bnumMeanFlow,bnumStdvFlow,StdvFromMean,pixelSpace,VplanesAllx,VplanesAlly,VplanesAllz,imageData,caseFilePath)
+
 SavePoint_Callback(hObject, eventdata, handles);
 parameter_choice_Callback(hObject, eventdata, handles);
 set(dcm_obj,'UpdateFcn',@myupdatefcn_all); %update dataCursor w/ cust. fcn
