@@ -1,7 +1,7 @@
 Quantitative Velocity Tool (QVT) - MATLAB
 =========
 
-**Maintainers: Grant S. Roberts, Carson A. Hoffman, and Leonardo A. Rivera-Rivera**
+**Maintainers: Grant S. Roberts, Carson A. Hoffman, Leonardo A. Rivera-Rivera, and Eric M. Schrauben**
 
 
 ### Citations ### 
