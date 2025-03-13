@@ -94,13 +94,19 @@ global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
 global VplanesAllx VplanesAlly VplanesAllz imageData caseFilePath
 global vesselsAnalyzed allNotes
 
+% try testing folder so we can abort if the user cancels directory
+% selection
+directory = uigetdir; %interactive directory selection
+if isequal(directory,0)
+    return
+end
+
 % Initial Variables
 hfull = handles;
 versionNum = 'v1-2'; %paramMap Version
 branchLabeled = 0; %used in cursor updatefunction
 Ntxt = []; %used in cursor updatefunction
 p = []; %used in cursor updatefunction
-directory = uigetdir; %interactive directory selection
 vesselsAnalyzed = {};
 allNotes = cell(length(get(handles.NamePoint,'String')),1);
 
