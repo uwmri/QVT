@@ -23,7 +23,7 @@ function varargout = paramMap(varargin)
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 % Edit the above text to modify the response to help paramMap
-% Last Modified by GUIDE v2.5 05-Feb-2022 08:20:40
+% Last Modified by GUIDE v2.5 07-Jul-2025 14:28:10
 
 % Developed by Carson Hoffman and Grant Roberts
 % University of Wisconsin-Madison 2019
@@ -194,7 +194,7 @@ else %Load in pcvipr data from scratch
         = loadpcvipr(directory,handles); 
     end 
     
-    directory = uigetdir; %select saving dir 
+    directory = uigetdir(directory); %select saving dir 
     % Save all variables needed to run parametertool. This will be used
     % later to load in data faster instead of having to reload all data.
     % Save data_structure with time/version-stamped filename in 'directory'
@@ -618,6 +618,11 @@ end
 SavePoint_Callback(hObject, eventdata, handles);
 parameter_choice_Callback(hObject, eventdata, handles);
 set(dcm_obj,'UpdateFcn',@myupdatefcn_all); %update dataCursor w/ cust. fcn
+
+
+% RVC try to catch the error when I forget to close the Excel file
+% function xlwritewrap()
+
 
 % --- Executes on button press in SavePoint.
 function SavePoint_Callback(hObject, eventdata, handles)
@@ -1161,3 +1166,20 @@ function ParameterTool_CloseRequestFcn(hObject, eventdata, handles)
 % Hint: delete(hObject) closes the figure
 delete(hObject);
 
+
+% --- Executes on button press in CalculatePWV.
+function CalculatePWV_Callback(hObject, eventdata, handles)
+% hObject    handle to CalculatePWV (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global branchList res timeres flowPulsatile_val area_val
+
+pwvTool(branchList,res,timeres,flowPulsatile_val,area_val);
+
+% --- Executes on button press in CalculateTCD.
+function CalculateTCD_Callback(hObject, eventdata, handles)
+% hObject    handle to CalculateTCD (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+msgbox('TCD calculation not implemented')
