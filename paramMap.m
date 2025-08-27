@@ -23,7 +23,7 @@ function varargout = paramMap(varargin)
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 % Edit the above text to modify the response to help paramMap
-% Last Modified by GUIDE v2.5 05-Feb-2022 08:20:40
+% Last Modified by GUIDE v2.5 15-Aug-2025 09:33:03
 
 % Developed by Carson Hoffman and Grant Roberts
 % University of Wisconsin-Madison 2019
@@ -1148,8 +1148,8 @@ CurrentNum = find(branchList(pindex,5)==branchActual)-1;
 txt = {['Point Label: ' , PointLabel , sprintf('\n'), ...
     Labeltxt{1,1}, sprintf('%0.3f',value),Labeltxt{1,2}, sprintf('\n'), ...
     Labeltxt{2,1},sprintf('%0.3f',mean(average)),Labeltxt{2,2},sprintf('\n'), ...
-    'Current Branch #: ',sprintf('%i',CurrentNum),sprintf('\n') ...
-    'Label Number: ', sprintf('%i',bnum)]};
+    'Centerline point #: ',sprintf('%i\n',CurrentNum), ...
+    'Branch Number: ', sprintf('%i',bnum)]};
 
 
 % --- Executes when user attempts to close ParameterTool.
@@ -1161,3 +1161,32 @@ function ParameterTool_CloseRequestFcn(hObject, eventdata, handles)
 % Hint: delete(hObject) closes the figure
 delete(hObject);
 
+
+% --- Executes on button press in RemoveBranch.
+function RemoveBranch_Callback(hObject, eventdata, handles)
+% hObject    handle to RemoveBranch (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% copied from myupdatefcn_all
+global Labeltxt branchLabeled PointLabel branchList fullCData
+global flowPulsatile_val Planes p dcm_obj Ntxt hfull timeMIPcrossection
+global segmentFull MAGcrossection vTimeFrameave fig timeres nframes
+global VplanesAllx VplanesAlly VplanesAllz
+
+info_struct = getCursorInfo(dcm_obj);
+ptList = [info_struct.Position];
+ptList = reshape(ptList,[3,numel(ptList)/3])';
+pindex = zeros(size(ptList,1),1);
+
+% Find cursor point in branchList
+for n = 1:size(ptList,1)
+    xIdx = find(branchList(:,1) == ptList(n,1));
+    yIdx = find(branchList(xIdx,2) == ptList(n,2));
+    zIdx = find(branchList(xIdx(yIdx),3) == ptList(n,3));
+    pindex(n) = xIdx(yIdx(zIdx));
+end
+
+% Get associated branch number of full branch
+bnum = branchList(pindex,4);
+fprintf('Request to remove branch %d\n', bnum);
