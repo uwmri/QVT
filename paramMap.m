@@ -191,10 +191,14 @@ else %Load in pcvipr data from scratch
         VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
         bnumMeanFlow,bnumStdvFlow,StdvFromMean] ...  
-        = loadpcvipr(directory,handles); 
+        = loadpcvipr(directory,handles);
+    else
+        set(handles.TextUpdate,'String','pcvipr not found in that directory'); drawnow;
+        return
     end 
     
-    directory = uigetdir(directory); %select saving dir 
+    origdatadir = directory;
+    directory = uigetdir(origdatadir); %select saving dir 
     % Save all variables needed to run parametertool. This will be used
     % later to load in data faster instead of having to reload all data.
     % Save data_structure with time/version-stamped filename in 'directory'
@@ -203,6 +207,7 @@ else %Load in pcvipr data from scratch
     set(handles.TextUpdate,'String',['Saving Data as pcviprData_' saveState '.mat']); drawnow;
     
     data_struct = [];
+    data_struct.srcdir = origdatadir;
     data_struct.directory = directory;
     data_struct.area_val = area_val;
     data_struct.diam_val = diam_val;
