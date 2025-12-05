@@ -204,7 +204,8 @@ else %Load in pcvipr data from scratch
     % Save data_structure with time/version-stamped filename in 'directory'
     time = datestr(now);
     saveState = [time(1:2) time(4:6) time(10:11) '_' time(13:14) time(16:17) '_' versionNum];
-    set(handles.TextUpdate,'String',['Saving Data as pcviprData_' saveState '.mat']); drawnow;
+    set(handles.TextUpdate,'String',['Saving Data as pcviprData_' saveState '.mat']); 
+    set(handles.textScanID,'String', origdatadir); drawnow;
     
     data_struct = [];
     data_struct.srcdir = origdatadir;
@@ -1194,4 +1195,8 @@ end
 
 % Get associated branch number of full branch
 bnum = branchList(pindex,4);
+
+% dump all points for that branch
+disp(branchList(branchList(:,4) == bnum,:))
+
 fprintf('Request to remove branch %d\n', bnum);
