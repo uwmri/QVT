@@ -9,6 +9,9 @@ function [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_va
 %   Dependencies: load_dat.m, background_phase_correction.m, evaluate_poly.m
 %     calc_angio.m, feature_extraction.m, paramMap_params_new.m, slidingThreshold.m
 
+disp('loading old recons with loadpcvipr.m is broken in this git branch')
+return
+
 %% Reads PCVIPR Header
 filetype = 'dat';
 set(handles.TextUpdate,'String','Loading .DAT Data'); drawnow;
