@@ -23,7 +23,7 @@ function varargout = paramMap(varargin)
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 % Edit the above text to modify the response to help paramMap
-% Last Modified by GUIDE v2.5 15-Aug-2025 09:33:03
+% Last Modified by GUIDE v2.5 30-Dec-2025 11:52:23
 
 % Developed by Carson Hoffman and Grant Roberts
 % University of Wisconsin-Madison 2019
@@ -92,7 +92,7 @@ global r timeMIPcrossection segmentFull vTimeFrameave velMean_val versionNum
 global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
 global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
 global VplanesAllx VplanesAlly VplanesAllz imageData caseFilePath
-global vesselsAnalyzed allNotes
+global vesselsAnalyzed allNotes pwvSeedPoints
 
 % try testing folder so we can abort if the user cancels directory
 % selection
@@ -102,6 +102,7 @@ if isequal(directory,0)
 end
 
 % Initial Variables
+pwvSeedPoints = [];
 hfull = handles;
 versionNum = 'v1-2'; %paramMap Version
 branchLabeled = 0; %used in cursor updatefunction
@@ -1030,7 +1031,24 @@ if ~isempty(info_struct)
     visboundaries(hfull.TRcross,Maskcross,'LineWidth',1)
 end 
     
+function [ pindex, idxbr ] = getChosenBranch(d_obj, brList)
+info_struct = getCursorInfo(d_obj);
+ptList = [info_struct.Position];
+ptList = reshape(ptList,[3,numel(ptList)/3])';
+pindex = zeros(size(ptList,1),1);
 
+% Find cursor point in branchList
+for n = 1:size(ptList,1)
+    xIdx = find(brList(:,1) == ptList(n,1));
+    yIdx = find(brList(xIdx,2) == ptList(n,2));
+    zIdx = find(brList(xIdx(yIdx),3) == ptList(n,3));
+    pindex(n) = xIdx(yIdx(zIdx));
+end
+idxbr = brList(pindex,4);
+% for debugging
+disp('pindex list:')
+disp(pindex)
+fprintf('branch # %d\n', idxbr)
 
 function txt = myupdatefcn_all(empt,event_obj)
 % Customizes text of data tips
@@ -1039,21 +1057,8 @@ global flowPulsatile_val Planes p dcm_obj Ntxt hfull timeMIPcrossection
 global segmentFull MAGcrossection vTimeFrameave fig timeres nframes
 global VplanesAllx VplanesAlly VplanesAllz
 
-info_struct = getCursorInfo(dcm_obj);
-ptList = [info_struct.Position];
-ptList = reshape(ptList,[3,numel(ptList)/3])';
-pindex = zeros(size(ptList,1),1);
-
-% Find cursor point in branchList
-for n = 1:size(ptList,1)
-    xIdx = find(branchList(:,1) == ptList(n,1));
-    yIdx = find(branchList(xIdx,2) == ptList(n,2));
-    zIdx = find(branchList(xIdx(yIdx),3) == ptList(n,3));
-    pindex(n) = xIdx(yIdx(zIdx));
-end
-
 % Get associated branch number of full branch
-bnum = branchList(pindex,4);
+[ pindex, bnum ] = getChosenBranch(dcm_obj, branchList);
 Logical_branch = branchList(:,4) ~= bnum;
 index_range = pindex-2:pindex+2; % OUTPUT +/- points
 index_range(index_range<1) = []; %removes outliers and other branch points
@@ -1168,35 +1173,48 @@ function ParameterTool_CloseRequestFcn(hObject, eventdata, handles)
 delete(hObject);
 
 
-% --- Executes on button press in RemoveBranch.
-function RemoveBranch_Callback(hObject, eventdata, handles)
-% hObject    handle to RemoveBranch (see GCBO)
+% --- Executes on button press in AddSeedPoint.
+function AddSeedPoint_Callback(hObject, eventdata, handles)
+% hObject    handle to AddSeedPoint (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% copied from myupdatefcn_all
-global Labeltxt branchLabeled PointLabel branchList fullCData
-global flowPulsatile_val Planes p dcm_obj Ntxt hfull timeMIPcrossection
-global segmentFull MAGcrossection vTimeFrameave fig timeres nframes
-global VplanesAllx VplanesAlly VplanesAllz
+global dcm_obj branchList pwvSeedPoints
+[ idx, ~ ] = getChosenBranch(dcm_obj, branchList);
+pwvSeedPoints = [ pwvSeedPoints, idx ];
+fprintf('Added seed point at index %d\n', idx)
 
-info_struct = getCursorInfo(dcm_obj);
-ptList = [info_struct.Position];
-ptList = reshape(ptList,[3,numel(ptList)/3])';
-pindex = zeros(size(ptList,1),1);
 
-% Find cursor point in branchList
-for n = 1:size(ptList,1)
-    xIdx = find(branchList(:,1) == ptList(n,1));
-    yIdx = find(branchList(xIdx,2) == ptList(n,2));
-    zIdx = find(branchList(xIdx(yIdx),3) == ptList(n,3));
-    pindex(n) = xIdx(yIdx(zIdx));
+% --- Executes on button press in DeleteAllSeeds.
+function DeleteAllSeeds_Callback(hObject, eventdata, handles)
+% hObject    handle to DeleteAllSeeds (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+global pwvSeedPoints
+pwvSeedPoints = [];
+disp('seed points deleted')
+
+
+% --- Executes on button press in HideBranches.
+function HideBranches_Callback(hObject, eventdata, handles)
+% hObject    handle to HideBranches (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+disp('Button press to Hide branches not connected to seeds')
+
+
+% --- Executes on button press in computePWV.
+function computePWV_Callback(hObject, eventdata, handles)
+% hObject    handle to computePWV (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+global branchList pwvSeedPoints
+
+disp('Seeds are:')
+for ii=1:length(pwvSeedPoints)
+    disp(branchList(pwvSeedPoints(ii),:))
 end
-
-% Get associated branch number of full branch
-bnum = branchList(pindex,4);
-
-% dump all points for that branch
-disp(branchList(branchList(:,4) == bnum,:))
-
-fprintf('Request to remove branch %d\n', bnum);
+disp('Button press to compute PWV')

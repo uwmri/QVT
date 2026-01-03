@@ -90,49 +90,53 @@ branchList = branchListSmooth;
 %% match junctions to branches
 % RVC December 2025
 imgsize = size(cl);
-branchJunctions = - ones(2, max(branchList(:,4)));
-njunc = max(junctionList(:,4));
+% branchJunctions = - ones(2, max(branchList(:,4))); % are we using this?
+njunc = max(junctionList(:,4)); % is this used more than once?
 
 % preallocate array using dummy structure
-juncdummy.pos = zeros(1,3);
-juncdummy.branches = [];
-jListStruct = repmat(juncdummy, 1, njunc);
+junctemp.pos = zeros(1,3);
+junctemp.branches = [];
+jListStruct = repmat(junctemp, 1, njunc);
 
-for k=1:njunc
-    thisjunction = junctionList(junctionList(:,4)==k,1:3);
-    if isempty(thisjunction)
-        continue
-    end
-
-    % define a box around the junction
-    d = size(thisjunction);
-    if d(1) > 1
-        boxmin = min(thisjunction) - 1; % lower edge is one less than minimum value in each column
-        boxmax = max(thisjunction) + 1; % upper edge
-    else
-        boxmin = thisjunction - 1;
-        boxmax = thisjunction + 1;
-    end
-    boxmin = max(boxmin,5);         % at least five voxels from edge of image (may not be necessary)
-    boxmax = min(boxmax,imgsize - 5);
-    naybrhood = cl(boxmin(1):boxmax(1),boxmin(2):boxmax(2),boxmin(3):boxmax(3));
-    [ rowvec, colvec, pgvec ] = ind2sub(size(naybrhood),find(naybrhood==2)); % branch "coordinates"
-
-    % look at all of the branch points around this junction
-    for idxnbr=1:length(rowvec)
-        lbptmatch(:,3) = abs(boxmin(3) + pgvec(idxnbr) - 1 - branchList(:,3)) < 1;
-        lbptmatch(:,2) = abs(boxmin(2) + colvec(idxnbr) - 1 - branchList(:,2)) < 1;
-        lbptmatch(:,1) = abs(boxmin(1) + rowvec(idxnbr) - 1 - branchList(:,1)) < 1;
-        
-        idxbrpts = find(all(lbptmatch,2));
-        if isempty(idxbrpts) % maybe the branch was trimmed away?
-	        continue
-        end
-    
-        fprintf('branch %d attaches to junction %d:\n', branchList(idxbrpts(1),4), k)
-        disp(branchList(idxbrpts,:))
-    end
-end
+% for k=1:max(branchList(:,4))
+%     br = branchList(branchList(:,4)==k,:);
+% end
+% 
+% for k=1:njunc
+%     thisjunction = junctionList(junctionList(:,4)==k,1:3);
+%     if isempty(thisjunction)
+%         continue
+%     end
+% 
+%     % define a box around the junction
+%     d = size(thisjunction);
+%     if d(1) > 1
+%         boxmin = min(thisjunction) - 1; % lower edge is one less than minimum value in each column
+%         boxmax = max(thisjunction) + 1; % upper edge
+%     else
+%         boxmin = thisjunction - 1;
+%         boxmax = thisjunction + 1;
+%     end
+%     boxmin = max(boxmin,5);         % at least five voxels from edge of image (may not be necessary)
+%     boxmax = min(boxmax,imgsize - 5);
+%     naybrhood = cl(boxmin(1):boxmax(1),boxmin(2):boxmax(2),boxmin(3):boxmax(3));
+%     [ rowvec, colvec, pgvec ] = ind2sub(size(naybrhood),find(naybrhood==2)); % branch "coordinates"
+% 
+%     % look at all of the branch points around this junction
+%     for idxnbr=1:length(rowvec)
+%         lbptmatch(:,3) = abs(boxmin(3) + pgvec(idxnbr) - 1 - branchList(:,3)) < 1;
+%         lbptmatch(:,2) = abs(boxmin(2) + colvec(idxnbr) - 1 - branchList(:,2)) < 1;
+%         lbptmatch(:,1) = abs(boxmin(1) + rowvec(idxnbr) - 1 - branchList(:,1)) < 1;
+% 
+%         idxbrpts = find(all(lbptmatch,2));
+%         if isempty(idxbrpts) % maybe the branch was trimmed away?
+% 	        continue
+%         end
+% 
+%         fprintf('branch %d attaches to junction %d:\n', branchList(idxbrpts(1),4), k)
+%         disp(branchList(idxbrpts,:))
+%     end
+% end
 
 end
 

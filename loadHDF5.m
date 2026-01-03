@@ -182,7 +182,7 @@ imageData.pcviprHeader = pcviprHeader;
 % Get trim and create the centerline data
 sortingCriteria = 3; %sorts branches by junctions/intersects 
 spurLength = 15; %minimum branch length (removes short spurs)
-[~,~,branchList,~] = feature_extraction(sortingCriteria,spurLength,vMean,segment,handles);
+[~,~,branchList,~,~] = feature_extraction(sortingCriteria,spurLength,vMean,segment,handles);
 
 % Flow parameter calculation, bulk of code is in paramMap_parameters.m
 SEG_TYPE = 'kmeans'; %kmeans or thresh
