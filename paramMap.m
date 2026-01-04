@@ -23,7 +23,7 @@ function varargout = paramMap(varargin)
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 % Edit the above text to modify the response to help paramMap
-% Last Modified by GUIDE v2.5 30-Dec-2025 11:52:23
+% Last Modified by GUIDE v2.5 04-Jan-2026 00:02:27
 
 % Developed by Carson Hoffman and Grant Roberts
 % University of Wisconsin-Madison 2019
@@ -965,8 +965,13 @@ end
 function [ pindex, idxbr ] = getChosenBranch(d_obj, brList, handles)
 info_struct = getCursorInfo(d_obj);
 if isempty(info_struct)
-    set(handles.TextUpdate,'String','Please put the angiogram figure in DataTip mode');
-    drawnow;
+    msg = 'Please put the angiogram figure in DataTip mode';
+    if handles == 0
+        disp(msg)
+    else
+        set(handles.TextUpdate,'String',msg);
+        drawnow;
+    end
     pindex = [];
     idxbr = [];
     return
@@ -996,7 +1001,7 @@ global segmentFull MAGcrossection vTimeFrameave fig timeres nframes
 global VplanesAllx VplanesAlly VplanesAllz
 
 % Get associated branch number of full branch
-[ pindex, bnum ] = getChosenBranch(dcm_obj, branchList);
+[ pindex, bnum ] = getChosenBranch(dcm_obj, branchList, 0);
 Logical_branch = branchList(:,4) ~= bnum;
 index_range = pindex-2:pindex+2; % OUTPUT +/- points
 index_range(index_range<1) = []; %removes outliers and other branch points
@@ -1145,7 +1150,15 @@ function HideBranches_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-disp('Button press to Hide branches not connected to seeds')
+global branchList pwvSeedPoints
+
+if get(hObject,'Value') == 0 % don't hide
+    updateAreaSlideOrAreaInvert(handles) % revert to threshold based on Area slider
+else
+    idseedbr = branchList(pwvSeedPoints,4);
+    lp = ismember(branchList(:,4),idseedbr);
+    maskangiogrambranches(lp, handles)
+end
 
 
 % --- Executes on button press in computePWV.
@@ -1162,4 +1175,3 @@ for ii=1:length(pwvSeedPoints)
 end
 set(handles.TextUpdate,'String','Would calculate PWV now');
 drawnow;
-
