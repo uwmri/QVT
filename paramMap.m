@@ -86,7 +86,7 @@ guidata(hObject, handles);
 
 % Create global namespace
 global branchList Planes hfull p branchLabeled Ntxt nframes res matrix VENC
-global directory AveAreaBranch LogPoints fullCData area_val flowPerHeartCycle_val
+global directory AveAreaBranch fullCData area_val flowPerHeartCycle_val
 global PI_val diam_val maxVel_val RI_val flowPulsatile_val timeres segment
 global r timeMIPcrossection segmentFull vTimeFrameave velMean_val versionNum
 global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
@@ -340,7 +340,6 @@ for n = 1:max(branchList(:,4))
     AveAreaBranch(n,1) = mean(area_val(Btemp)); %mean area of branch
 end
 
-LogPoints = true(size(branchList,1),1); %logical array of 1s for areaThresh
 fullCData = flowPerHeartCycle_val; %initialize fullCData color as flow
 
 steps = [1./(nframes-1) 10./(nframes-1)]; %set so one 'slide' moves to the next slice exactly
@@ -826,66 +825,53 @@ function CoronalView_Callback(hObject, eventdata, handles)
 global fig
 view(fig.CurrentAxes,[90,0])
 
+% function to specify points to mask in the main GUI based on logical
+% array given as argument
+function maskangiogrambranches(logpoints, handles)
+global area_val branchList hscatter PI_val RI_val
+global velMean_val diam_val maxVel_val flowPerHeartCycle_val StdvFromMean
+
+hscatter.XData = branchList(logpoints,1);
+hscatter.YData = branchList(logpoints,2);
+hscatter.ZData = branchList(logpoints,3);
+
+val = get(handles.parameter_choice, 'Value');
+str = get(handles.parameter_choice, 'String');
+switch str{val}
+    case 'Area'
+        hscatter.CData = area_val(logpoints);
+    case 'Ratio of Areas'
+        hscatter.CData = diam_val(logpoints);
+    case 'Total Flow'
+        hscatter.CData = flowPerHeartCycle_val(logpoints);
+    case 'Maximum Velocity '
+        hscatter.CData = maxVel_val(logpoints);
+    case 'Mean Velocity'
+        hscatter.CData = velMean_val(logpoints);
+    case 'Flow Consistency'
+        hscatter.CData = StdvFromMean(logpoints);
+    case 'Resistance Index'
+        hscatter.CData = RI_val(logpoints);
+    case str{val}
+        hscatter.CData = PI_val(logpoints);
+end
+
+function updateAreaSlideOrAreaInvert(handles)
+global branchList AveAreaBranch
+
+lp = find(AveAreaBranch>max(AveAreaBranch)*get(handles.AreaThreshSlide,'Value')*.15);
+lp = ismember(branchList(:,4),lp);
+
+if get(handles.InvertArea,'Value') == 0
+    maskangiogrambranches(lp, handles)
+else
+    maskangiogrambranches(~lp, handles)
+end
 
 % --- Executes on slider movement.
 function AreaThreshSlide_Callback(hObject, eventdata, handles)
-global LogPoints area_val branchList hscatter AveAreaBranch PI_val RI_val
-global velMean_val diam_val maxVel_val flowPerHeartCycle_val StdvFromMean
 
-LogPoints = find(AveAreaBranch>max(AveAreaBranch)*get(hObject,'Value')*.15);
-LogPoints = ismember(branchList(:,4),LogPoints);
-
-if get(handles.InvertArea,'Value') == 0
-    hscatter.XData = branchList(LogPoints,1);
-    hscatter.YData = branchList(LogPoints,2);
-    hscatter.ZData = branchList(LogPoints,3);
-    
-    val = get(handles.parameter_choice, 'Value');
-    str = get(handles.parameter_choice, 'String');
-    switch str{val}
-        case 'Area'
-            hscatter.CData = area_val(LogPoints);
-        case 'Ratio of Areas'
-            hscatter.CData = diam_val(LogPoints);
-        case 'Total Flow'
-            hscatter.CData = flowPerHeartCycle_val(LogPoints);
-        case 'Maximum Velocity '
-            hscatter.CData = maxVel_val(LogPoints);
-        case 'Mean Velocity'
-            hscatter.CData = velMean_val(LogPoints);
-        case 'Flow Consistency'
-            hscatter.CData = StdvFromMean(LogPoints);
-        case 'Resistance Index'
-            hscatter.CData = RI_val(LogPoints);
-        case str{val}
-            hscatter.CData = PI_val(LogPoints);
-    end
-else
-    hscatter.XData = branchList(~LogPoints,1);
-    hscatter.YData = branchList(~LogPoints,2);
-    hscatter.ZData = branchList(~LogPoints,3);
-    
-    val = get(handles.parameter_choice, 'Value');
-    str = get(handles.parameter_choice, 'String');
-    switch str{val}
-        case 'Area'
-            hscatter.CData = area_val(~LogPoints);
-        case 'Ratio of Areas'
-            hscatter.CData = diam_val(~LogPoints);
-        case 'Total Flow'
-            hscatter.CData = flowPerHeartCycle_val(~LogPoints);
-        case 'Maximum Velocity '
-            hscatter.CData = maxVel_val(~LogPoints);
-        case 'Mean Velocity'
-            hscatter.CData = velMean_val(~LogPoints);
-        case 'Flow Consistency'
-            hscatter.CData = StdvFromMean(LogPoints);
-        case 'Resistance Index'
-            hscatter.CData = RI_val(~LogPoints);
-        case str{val}
-            hscatter.CData = PI_val(~LogPoints);
-    end
-end
+updateAreaSlideOrAreaInvert(handles)
 
 
 % --- Executes during object creation, after setting all properties.
@@ -923,62 +909,8 @@ function InvertArea_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % Hint: get(hObject,'Value') returns toggle state of InvertArea
-global LogPoints area_val branchList hscatter PI_val RI_val velMean_val
-global diam_val maxVel_val flowPerHeartCycle_val StdvFromMean
 
-% Capable of inverting areaThresh (keep vessels OUTSIDE/INSIDE areaThresh)
-OnOff = get(hObject,'Value'); %on off switch
-if OnOff == 0 %if turned off (default),
-    hscatter.XData = branchList(LogPoints,1); %plot angio w/in areaThresh
-    hscatter.YData = branchList(LogPoints,2);
-    hscatter.ZData = branchList(LogPoints,3);
-    
-    val = get(handles.parameter_choice, 'Value');
-    str = get(handles.parameter_choice, 'String');
-    switch str{val} %plot centerlines w/in areaThresh
-        case 'Area'
-            hscatter.CData = area_val(LogPoints);
-        case 'Ratio of Areas'
-            hscatter.CData = diam_val(LogPoints);
-        case 'Total Flow'
-            hscatter.CData = flowPerHeartCycle_val(LogPoints);
-        case 'Maximum Velocity '
-            hscatter.CData = maxVel_val(LogPoints);
-        case 'Mean Velocity'
-            hscatter.CData = velMean_val(LogPoints);
-        case 'Flow Consistency'
-            hscatter.CData = StdvFromMean(LogPoints);
-        case 'Resistance Index'
-            hscatter.CData = RI_val(LogPoints);
-        case str{val}
-            hscatter.CData = PI_val(LogPoints);
-    end
-else %if invert is turned on, PLOT DATA POINTS OUTSIDE AREA THRESHOLD
-    hscatter.XData = branchList(~LogPoints,1);
-    hscatter.YData = branchList(~LogPoints,2);
-    hscatter.ZData = branchList(~LogPoints,3);
-    
-    val = get(handles.parameter_choice, 'Value');
-    str = get(handles.parameter_choice, 'String');
-    switch str{val}
-        case 'Area'
-            hscatter.CData = area_val(~LogPoints);
-        case 'Ratio of Areas'
-            hscatter.CData = diam_val(~LogPoints);
-        case 'Total Flow'
-            hscatter.CData = flowPerHeartCycle_val(~LogPoints);
-        case 'Maximum Velocity '
-            hscatter.CData = maxVel_val(~LogPoints);
-        case 'Mean Velocity'
-            hscatter.CData = velMean_val(~LogPoints);
-        case 'Flow Consistency'
-            hscatter.CData = StdvFromMean(LogPoints);
-        case 'Resistance Index'
-            hscatter.CData = RI_val(~LogPoints);
-        case str{val}
-            hscatter.CData = PI_val(~LogPoints);
-    end
-end
+updateAreaSlideOrAreaInvert(handles)
 
 
 % --- Executes on slider movement.
@@ -991,7 +923,6 @@ function VcrossTRslider_CreateFcn(hObject, eventdata, handles)
 if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
-
 
 
 function updateVcrossTR(handles)
@@ -1031,8 +962,15 @@ if ~isempty(info_struct)
     visboundaries(hfull.TRcross,Maskcross,'LineWidth',1)
 end 
     
-function [ pindex, idxbr ] = getChosenBranch(d_obj, brList)
+function [ pindex, idxbr ] = getChosenBranch(d_obj, brList, handles)
 info_struct = getCursorInfo(d_obj);
+if isempty(info_struct)
+    set(handles.TextUpdate,'String','Please put the angiogram figure in DataTip mode');
+    drawnow;
+    pindex = [];
+    idxbr = [];
+    return
+end
 ptList = [info_struct.Position];
 ptList = reshape(ptList,[3,numel(ptList)/3])';
 pindex = zeros(size(ptList,1),1);
@@ -1180,9 +1118,13 @@ function AddSeedPoint_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 global dcm_obj branchList pwvSeedPoints
-[ idx, ~ ] = getChosenBranch(dcm_obj, branchList);
-pwvSeedPoints = [ pwvSeedPoints, idx ];
-fprintf('Added seed point at index %d\n', idx)
+[ idx, ~ ] = getChosenBranch(dcm_obj, branchList, handles);
+if ~isempty(idx)
+    pwvSeedPoints = [ pwvSeedPoints, idx ];
+    fprintf('Added seed point at index %d\n', idx)
+    set(handles.TextUpdate,'String','PWV Seed Point added');
+    drawnow;
+end
 
 
 % --- Executes on button press in DeleteAllSeeds.
@@ -1193,7 +1135,8 @@ function DeleteAllSeeds_Callback(hObject, eventdata, handles)
 
 global pwvSeedPoints
 pwvSeedPoints = [];
-disp('seed points deleted')
+set(handles.TextUpdate,'String','Deleted PWV seed points');
+drawnow;
 
 
 % --- Executes on button press in HideBranches.
@@ -1217,4 +1160,6 @@ disp('Seeds are:')
 for ii=1:length(pwvSeedPoints)
     disp(branchList(pwvSeedPoints(ii),:))
 end
-disp('Button press to compute PWV')
+set(handles.TextUpdate,'String','Would calculate PWV now');
+drawnow;
+
