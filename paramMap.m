@@ -92,7 +92,8 @@ global r timeMIPcrossection segmentFull vTimeFrameave velMean_val versionNum
 global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
 global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
 global VplanesAllx VplanesAlly VplanesAllz imageData caseFilePath
-global vesselsAnalyzed allNotes pwvSeedPoints
+global vesselsAnalyzed allNotes 
+global pwvSeedPoints pwvConnBranches branchJunctions jListStruct
 
 % try testing folder so we can abort if the user cancels directory
 % selection
@@ -103,6 +104,7 @@ end
 
 % Initial Variables
 pwvSeedPoints = [];
+pwvConnBranches = [];
 hfull = handles;
 versionNum = 'v1-2'; %paramMap Version
 branchLabeled = 0; %used in cursor updatefunction
@@ -146,6 +148,8 @@ if  fileIndx > 1  %if a pre-processed case is selected
     area_val = data_struct.area_val; %area of vessels
     diam_val = data_struct.diam_val; %diameter of vessels
     branchList = data_struct.branchList; %point locations/labelings
+    branchJunctions = data_struct.branchJunctions;
+    jListStruct = data_struct.jListStruct; % list of junctions
     flowPerHeartCycle_val = data_struct.flowPerHeartCycle_val; %TA flow
     maxVel_val = data_struct.maxVel_val; %TA max velocities
     velMean_val = data_struct.velMean_val; %TA mean velocities
@@ -183,16 +187,12 @@ else %Load in pcvipr data from scratch
         maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
         VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-        bnumMeanFlow,bnumStdvFlow,StdvFromMean] ...
+        bnumMeanFlow,bnumStdvFlow,StdvFromMean,branchJunctions,jListStruct] ...
         = loadHDF5(directory,handles);
         % = loadHDF5_py(directory,handles); 
     elseif exist([directory filesep 'CD.dat'],'file')
-        [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_val, ...
-        maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
-        VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
-        timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-        bnumMeanFlow,bnumStdvFlow,StdvFromMean] ...  
-        = loadpcvipr(directory,handles);
+        set(handles.TextUpdate,'String','processing of old CD.dat recons not supported'); drawnow;
+        return
     else
         set(handles.TextUpdate,'String','pcvipr not found in that directory'); drawnow;
         return
@@ -214,6 +214,8 @@ else %Load in pcvipr data from scratch
     data_struct.area_val = area_val;
     data_struct.diam_val = diam_val;
     data_struct.branchList = branchList;
+    data_struct.branchJunctions = branchJunctions;
+    data_struct.jListStruct = jListStruct;
     data_struct.flowPerHeartCycle_val = flowPerHeartCycle_val;
     data_struct.maxVel_val = maxVel_val;
     data_struct.velMean_val = velMean_val;
@@ -966,11 +968,12 @@ function [ pindex, idxbr ] = getChosenBranch(d_obj, brList, handles)
 info_struct = getCursorInfo(d_obj);
 if isempty(info_struct)
     msg = 'Please put the angiogram figure in DataTip mode';
-    if handles == 0
-        disp(msg)
-    else
+    if isstruct(handles)
+        
         set(handles.TextUpdate,'String',msg);
         drawnow;
+    else
+        disp(msg)
     end
     pindex = [];
     idxbr = [];
@@ -1122,12 +1125,22 @@ function AddSeedPoint_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global dcm_obj branchList pwvSeedPoints
-[ idx, ~ ] = getChosenBranch(dcm_obj, branchList, handles);
+global dcm_obj branchList pwvSeedPoints pwvConnBranches
+[ idx, brnum ] = getChosenBranch(dcm_obj, branchList, handles);
 if ~isempty(idx)
     pwvSeedPoints = [ pwvSeedPoints, idx ];
     fprintf('Added seed point at index %d\n', idx)
-    set(handles.TextUpdate,'String','PWV Seed Point added');
+    if all(ismember(brnum, pwvConnBranches))
+        set(handles.TextUpdate,'String','PWV Seed added on connected branch');
+        drawnow;
+    else
+        newbranchList = brnum;
+        
+        set(handles.TextUpdate,'String','PWV Seed added on new tree');
+        drawnow;
+    end
+else
+    set(handles.TextUpdate,'String','failed to find seed point');
     drawnow;
 end
 
@@ -1138,8 +1151,9 @@ function DeleteAllSeeds_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global pwvSeedPoints
+global pwvSeedPoints pwvConnBranches
 pwvSeedPoints = [];
+pwvConnBranches = [];
 set(handles.TextUpdate,'String','Deleted PWV seed points');
 drawnow;
 

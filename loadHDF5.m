@@ -2,7 +2,8 @@ function [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_va
     maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
     VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
     timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-    bnumMeanFlow,bnumStdvFlow,StdvFromMean] = loadHDF5(directory,handles)
+    bnumMeanFlow,bnumStdvFlow,StdvFromMean, ...
+    branchJunctions,jListStruct] = loadHDF5(directory,handles)
 %LOADHDF5: loadhdf5 reads in PCVIPR data saved in h5
 %   Used by: paramMap.m
 %   Dependencies: background_phase_correction.m, evaluate_poly.m, calc_angio.m,
@@ -182,7 +183,7 @@ imageData.pcviprHeader = pcviprHeader;
 % Get trim and create the centerline data
 sortingCriteria = 3; %sorts branches by junctions/intersects 
 spurLength = 15; %minimum branch length (removes short spurs)
-[~,~,branchList,~,~] = feature_extraction(sortingCriteria,spurLength,vMean,segment,handles);
+[branchList,branchJunctions,jListStruct] = feature_extraction(sortingCriteria,spurLength,vMean,segment,handles);
 
 % Flow parameter calculation, bulk of code is in paramMap_parameters.m
 SEG_TYPE = 'kmeans'; %kmeans or thresh
