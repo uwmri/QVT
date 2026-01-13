@@ -102,16 +102,18 @@ if isequal(directory,0)
     return
 end
 
-% Initial Variables
-pwvSeedPoints = [];
-pwvConnBranches = [];
 hfull = handles;
 versionNum = 'v1-2'; %paramMap Version
 branchLabeled = 0; %used in cursor updatefunction
 Ntxt = []; %used in cursor updatefunction
 p = []; %used in cursor updatefunction
+
 vesselsAnalyzed = {};
 allNotes = cell(length(get(handles.NamePoint,'String')),1);
+pwvSeedPoints = [];
+pwvConnBranches = [];
+branchJunctions = [];
+jListStruct = [];
 
 % Creates list of all .mat files in selected directory
 d = dir([directory filesep '*.mat']);
@@ -969,7 +971,6 @@ info_struct = getCursorInfo(d_obj);
 if isempty(info_struct)
     msg = 'Please put the angiogram figure in DataTip mode';
     if isstruct(handles)
-        
         set(handles.TextUpdate,'String',msg);
         drawnow;
     else
@@ -1139,9 +1140,6 @@ if ~isempty(idx)
         set(handles.TextUpdate,'String','PWV Seed added on new tree');
         drawnow;
     end
-else
-    set(handles.TextUpdate,'String','failed to find seed point');
-    drawnow;
 end
 
 

@@ -142,12 +142,13 @@ function idbr = findJunctions(r, jMat, imgsz)
 % return the id of the junction nearest to r
 
 idbr = -1;
-for ii=1:3
-    if r(ii) < 2 || r(ii) + 2 > imgsz(ii)
-        return % don't look at edges of image
-    end
-end
-submat = jMat(juncsearch(r(1)), juncsearch(r(2)), juncsearch(r(3)));
+% for ii=1:3
+%     if r(ii) < 2 || r(ii) + 2 > imgsz(ii)
+%         return % don't look at edges of image
+%     end
+% end
+submat = jMat(juncsearch(r(1), imgsz(1)), juncsearch(r(2), imgsz(2)), ...
+    juncsearch(r(3), imgsz(3)));
 [ ~, ~, brlist ] = find(submat);
 if isempty(brlist)
     return
@@ -164,6 +165,14 @@ disp(ulist)
 
 end
 
-function idxarray = juncsearch(x)
-    idxarray = ceil(x-2):floor(x+2);
+function idxarray = juncsearch(x, lim)
+ii = ceil(x-2);
+if ii < 1
+    ii = 1;
+end
+jj = floor(x+2);
+if jj > lim
+    jj = lim;
+end
+idxarray = ii:jj;
 end

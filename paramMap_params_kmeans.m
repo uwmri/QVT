@@ -167,7 +167,7 @@ for n = 1:size(Tangent_V,1)
     %%%%%%%%%%% KMEANS %%%%%%%%%%%%%%
     % Get Planes and normalize
     clust = horzcat(timeMIPcrossection(n,:)',vTimeFrameave(n,:)');
-    [idx,~] = kmeans(clust,2);
+    [idx,~] = kmeans(clust,2); % sometimes this fails 1/12/26
     
     %label inside or outside
     Lidx = numel(idx);
