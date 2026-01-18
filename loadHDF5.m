@@ -12,7 +12,7 @@ function [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_va
 %% Read HDF5
 filetype = 'hdf5';
 set(handles.TextUpdate,'String','Loading .HDF5 Data'); drawnow;
-mag = wraphdf5reader(fullfile(directory,'Flow.h5'),'/Data/MAG');
+mag = h5read(fullfile(directory,'Flow.h5'),'/Data/MAG');
 vx = wraphdf5reader(fullfile(directory,'Flow.h5'),'/Data/comp_vd_1');
 vy = wraphdf5reader(fullfile(directory,'Flow.h5'),'/Data/comp_vd_2');
 vz = wraphdf5reader(fullfile(directory,'Flow.h5'),'/Data/comp_vd_3');
