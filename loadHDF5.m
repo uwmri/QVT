@@ -12,11 +12,10 @@ function [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_va
 %% Read HDF5
 filetype = 'hdf5';
 set(handles.TextUpdate,'String','Loading .HDF5 Data'); drawnow;
-%cd = h5read(fullfile(directory,'Flow.h5'),'/ANGIO');
-mag = h5read(fullfile(directory,'Flow.h5'),'/Data/MAG');
-vx = h5read(fullfile(directory,'Flow.h5'),'/Data/comp_vd_1');
-vy = h5read(fullfile(directory,'Flow.h5'),'/Data/comp_vd_2');
-vz = h5read(fullfile(directory,'Flow.h5'),'/Data/comp_vd_3');
+mag = wraphdf5reader(fullfile(directory,'Flow.h5'),'/Data/MAG');
+vx = wraphdf5reader(fullfile(directory,'Flow.h5'),'/Data/comp_vd_1');
+vy = wraphdf5reader(fullfile(directory,'Flow.h5'),'/Data/comp_vd_2');
+vz = wraphdf5reader(fullfile(directory,'Flow.h5'),'/Data/comp_vd_3');
 
 disp('Computing time-averaged data')
 %CD = mean(cd,4)*32000;

@@ -11,11 +11,10 @@ function [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_va
 %% Read HDF5
 filetype = 'hdf5_py';
 set(handles.TextUpdate,'String','Loading .HDF5 Data'); drawnow;
-%cd = h5read(fullfile(directory,'Flow.h5'),'/ANGIO');
-mag = h5read(fullfile(directory,'Flow.h5'),'/MAG');
-vx = h5read(fullfile(directory,'Flow.h5'),'/VX')*10; % units cm/s to mm/s
-vy = h5read(fullfile(directory,'Flow.h5'),'/VY')*10;
-vz = h5read(fullfile(directory,'Flow.h5'),'/VZ')*10;
+mag = wraphdf5reader(fullfile(directory,'Flow.h5'),'/MAG');
+vx = wraphdf5reader(fullfile(directory,'Flow.h5'),'/VX')*10; % units cm/s to mm/s
+vy = wraphdf5reader(fullfile(directory,'Flow.h5'),'/VY')*10;
+vz = wraphdf5reader(fullfile(directory,'Flow.h5'),'/VZ')*10;
 
 matrix(1) = size(mag,1);                 
 matrix(2) = size(mag,2);
