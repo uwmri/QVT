@@ -91,7 +91,7 @@ branchList = branchListSmooth;
 % RVC December 2025
 imgsize = size(cl); % needed ?
 nbrnch = max(branchList(:,4));
-branchJunctions = - ones(nbrnch, 2); % are we using this?
+branchJunctions = - ones(nbrnch, 2);
 % preallocate array using dummy structure
 njunc = max(junctionList(:,4)); % is this used more than once?
 junctemp.pos = zeros(1,3);

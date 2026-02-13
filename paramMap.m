@@ -23,7 +23,7 @@ function varargout = paramMap(varargin)
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 % Edit the above text to modify the response to help paramMap
-% Last Modified by GUIDE v2.5 04-Jan-2026 00:02:27
+% Last Modified by GUIDE v2.5 10-Feb-2026 23:12:34
 
 % Developed by Carson Hoffman and Grant Roberts
 % University of Wisconsin-Madison 2019
@@ -93,7 +93,7 @@ global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
 global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
 global VplanesAllx VplanesAlly VplanesAllz imageData caseFilePath
 global vesselsAnalyzed allNotes 
-global pwvSeedPoints pwvConnBranches branchJunctions jListStruct
+global branchJunctions jListStruct
 
 % try testing folder so we can abort if the user cancels directory
 % selection
@@ -110,8 +110,6 @@ p = []; %used in cursor updatefunction
 
 vesselsAnalyzed = {};
 allNotes = cell(length(get(handles.NamePoint,'String')),1);
-pwvSeedPoints = [];
-pwvConnBranches = [];
 branchJunctions = [];
 jListStruct = [];
 
@@ -1120,28 +1118,233 @@ function ParameterTool_CloseRequestFcn(hObject, eventdata, handles)
 delete(hObject);
 
 
+function d = rowvecdiff(a, b)
+% assume a, b are row vectors with the same dimensions (1xn)
+
+dvec = a - b;
+d = sqrt(dvec*dvec');
+
+
+function junctdata = computeJunction(idjunc, rlastbrpt, dflow, dabsolut, lbranch)
+% compute information about the junction based on processing of its "first"
+% branch
+% idjunc       id for the junction in question
+% rlastbrpt    position of the point at end of branch nearest the junction
+%     these two inputs are inputs to processBranch, unchanged:
+% dflow        signed distance to the seed point from the start point on 
+%                   this branch (add lbranch to get to the rlastbrpt)
+% dabsolut     total distance to the seed point from start point on this
+%                   branch
+% lbranch      signed length of this branch, or distance to seed if seed is
+%                   on this branch
+% output:
+% junctdata    a structure containing information about this junction
+
+
+global jListStruct
+
+junctdata = jListStruct(idjunc);
+djtobr = rowvecdiff(rlastbrpt, junctdata.pos);
+if lbranch < 0
+    djtobr = -djtobr;
+end
+dtot = lbranch + djtobr;
+junctdata.dflow = dflow + dtot;
+junctdata.dabsolut = dabsolut + abs(dtot);
+junctdata.used = 0;
+junctdata.idj = idjunc; % we forget ID if not included in this struct
+
+
+
+function [ idxthisbranch, dtot, jlist ] = processBranch(varargin)
+% add a branch to the tree and compute distance metrics
+% 1 or 4 arguments
+% if one argument, it is row # for seed point in branchList
+%
+% if four arguments:
+% branch id
+% junction id
+% displacement (signed distance) at junction
+% absolute distance to junction from seed point
+% 
+% outputs:
+% idxthisbranch   logical array with the indices of this branch's rows in
+%                       branchList set true
+% dtot       array of displacement along the branch (in pixels, NOT mm!!)
+% jlist      a cell array containing the info about junctions that need to
+%               be added to the list for processing
+
+% branchJunctions has size nbranches x 2
+% jListStruct has one per junction
+
+global branchList branchesInTree branchJunctions jListStruct
+
+% initialize outputs so it doesn't throw an error when exiting early
+idxthisbranch = [];
+jlist = {};
+dtot = [];
+if nargin == 1
+    idbranch = branchList(varargin{1},4);
+    idjunc = 0;
+    jsign = 0; % +/- 1 depending on which end of the branch we are on
+elseif nargin == 4
+    idbranch = varargin{1};
+    idjunc = varargin{2};
+    if branchJunctions(idbranch,1) == idjunc
+        jsign = 1;
+    elseif branchJunctions(idbranch,2) == idjunc
+        jsign = -1; % starting from the sink means counting backwards
+    else
+        disp('processBranch() called with invalid branch/junction pairing')
+        return
+    end
+else
+    disp('programming error, invalid number of arguments to processBranch()')
+    return
+end
+
+if ismember(idbranch, branchesInTree) 
+    return 
+end
+
+idxthisbranch = branchList(:,4) == idbranch;
+ptsthisbranch = branchList(idxthisbranch,:);
+szbranch = sum(idxthisbranch); % idxthisbranch is a 1xn or nx1 of logicals
+
+if nargin == 1
+    ptnumber = branchList(varargin{1},5);
+    dflowstartpt = 0;
+    dabsstartpt = 0;
+else
+    if jsign < 0
+        ptnumber = szbranch;
+    else
+        ptnumber = 1;
+    end
+    doffset = rowvecdiff(ptsthisbranch(ptnumber,1:3), jListStruct(idjunc).pos);
+    dflowstartpt = varargin{3} + jsign*doffset;
+    dabsstartpt = varargin{4} + doffset;
+end
+
+% calculate distances along the branch
+dmag = zeros(1,szbranch);
+for ii = 2:szbranch
+    dmag(ii) = rowvecdiff(ptsthisbranch(ii,1:3), ptsthisbranch(ii-1,1:3));
+end
+dtot = cumsum(dmag);
+dtot = dtot - dtot(ptnumber) + dflowstartpt;
+
+% store junction or junctions
+if ptnumber ~= 1 && branchJunctions(idbranch,1) > 0
+    jlist{1} = computeJunction(branchJunctions(idbranch,1), ... 
+        ptsthisbranch(1,1:3), dflowstartpt, dabsstartpt, dtot(1));
+    kkjunc = 2;
+else
+    kkjunc = 1;
+end
+if ptnumber ~= size(ptsthisbranch, 1) && branchJunctions(idbranch,2) > 0
+    jlist{kkjunc} = computeJunction(branchJunctions(idbranch,2), ...
+        ptsthisbranch(szbranch,1:3), dflowstartpt, dabsstartpt, dtot(end));
+end
+
+branchesInTree(end+1) = idbranch;
+
+function calcPWV(handles)
+
+global branchList logTreePoints treeDistances flowPulsatile_val
+global res nframes timeres idxSeedPoint
+
+if isempty(idxSeedPoint)
+    set(handles.TextUpdate, 'String', 'Set seed point, then calculate PWV');
+    return
+end
+
+treeflow = flowPulsatile_val(logTreePoints,:);
+treedistmm = res*treeDistances(logTreePoints,:); % convert distances pixels to mm
+lentree = sum(logTreePoints); % is a 1xn or nx1 of logicals
+
+% need to normalize flow
+for ii = 1:lentree
+    v = treeflow(ii,:);
+    [sig, mu] = std(v);
+    treeflow(ii,:) = (v - mu)/sig;
+end
+
+initguess = [ zeros(1,nframes), 5 ]; % initial is zero waveform, pwv = 5 m/s
+
+% need to "recalculate" costfun on each call because the values, not
+% the variables, become part of costfun ???
+costfun = @(inParams)PWVest3_share(inParams,treedistmm,treeflow,timeres,ones(size(treedistmm)));
+% timeres in ms; mm/ms should be the same as m/s
+options = optimset('Display','iter', 'TolCon', 1e-7, 'TolX', 1e-7, 'TolFun', 1e-7,'DiffMinChange', 1e-3);
+[params,exitflag,output] = fminunc(costfun, initguess, options);
+set(handles.TextUpdate, 'String', sprintf('PWV = %.3f m/sec', params(end)));
+
+
+
+function traceVascularTree(handles)
+% traces out the vascular tree. Uses only global variables, ugh
+
+global branchList logTreePoints branchesInTree treeDistances
+global idxSeedPoint branchesMasked
+
+branchesInTree = branchesMasked;
+npts = size(branchList,1);
+logTreePoints = false(npts, 1);
+treeDistances = zeros(npts, 1);
+[ idxbrpts, distpts, jqueue ] = processBranch(idxSeedPoint);
+if isempty(idxbrpts)
+    set(handles.TextUpdate,'String','Tree generation failed');
+    return
+end
+logTreePoints(idxbrpts) = true;
+treeDistances(idxbrpts) = distpts;
+
+while true
+    idjq = 0;
+    dmin = 1e20;
+    for ii = 1:length(jqueue)
+        if jqueue{ii}.used < 1 && jqueue{ii}.dabsolut < dmin
+            idjq = ii;
+            dmin = jqueue{ii}.dabsolut;
+        end
+    end
+    if idjq < 1
+        break
+    end
+    jqueue{idjq}.used = 2;
+    jtest = jqueue{idjq};
+    for ii = 1:length(jtest.idbrs)
+        if ismember(jtest.idbrs(ii), branchesInTree)
+            continue
+        end
+        [ idxbrpts, distpts, jnew ] = processBranch(jtest.idbrs(ii), ...
+            jtest.idj, jtest.dflow, jtest.dabsolut);
+        logTreePoints(idxbrpts) = true;
+        treeDistances(idxbrpts) = distpts;
+        if ~isempty(jnew)
+            newqids = (1:length(jnew)) + length(jqueue);
+            jqueue(newqids) = jnew;
+        end
+    end
+end
+
+maskangiogrambranches(logTreePoints, handles)
+set(handles.HideBranches,'Value',1)
+set(handles.TextUpdate,'String','Traced nearby vascular tree');
+
+
 % --- Executes on button press in AddSeedPoint.
 function AddSeedPoint_Callback(hObject, eventdata, handles)
 % hObject    handle to AddSeedPoint (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global dcm_obj branchList pwvSeedPoints pwvConnBranches
-[ idx, brnum ] = getChosenBranch(dcm_obj, branchList, handles);
-if ~isempty(idx)
-    pwvSeedPoints = [ pwvSeedPoints, idx ];
-    fprintf('Added seed point at index %d\n', idx)
-    if all(ismember(brnum, pwvConnBranches))
-        set(handles.TextUpdate,'String','PWV Seed added on connected branch');
-        drawnow;
-    else
-        newbranchList = brnum;
-        
-        set(handles.TextUpdate,'String','PWV Seed added on new tree');
-        drawnow;
-    end
-end
+global dcm_obj branchList idxSeedPoint branchesMasked
 
+branchesMasked = []; % reset this
+[ idxSeedPoint, ~ ] = getChosenBranch(dcm_obj, branchList, handles);
+traceVascularTree(handles)
 
 % --- Executes on button press in DeleteAllSeeds.
 function DeleteAllSeeds_Callback(hObject, eventdata, handles)
@@ -1149,11 +1352,13 @@ function DeleteAllSeeds_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global pwvSeedPoints pwvConnBranches
-pwvSeedPoints = [];
-pwvConnBranches = [];
-set(handles.TextUpdate,'String','Deleted PWV seed points');
-drawnow;
+global idxSeedPoint branchesMasked
+
+idxSeedPoint = [];
+branchesMasked = [];
+updateAreaSlideOrAreaInvert(handles) % revert to threshold based on Area slider
+set(handles.TextUpdate,'String','Seed point reset');
+% no we don't need drawnow at the end of a callback fcn
 
 
 % --- Executes on button press in HideBranches.
@@ -1162,14 +1367,12 @@ function HideBranches_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global branchList pwvSeedPoints
+global logTreePoints
 
 if get(hObject,'Value') == 0 % don't hide
     updateAreaSlideOrAreaInvert(handles) % revert to threshold based on Area slider
 else
-    idseedbr = branchList(pwvSeedPoints,4);
-    lp = ismember(branchList(:,4),idseedbr);
-    maskangiogrambranches(lp, handles)
+    maskangiogrambranches(logTreePoints, handles)
 end
 
 
@@ -1179,11 +1382,22 @@ function computePWV_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global branchList pwvSeedPoints
+%global branchList 
 
-disp('Seeds are:')
-for ii=1:length(pwvSeedPoints)
-    disp(branchList(pwvSeedPoints(ii),:))
-end
-set(handles.TextUpdate,'String','Would calculate PWV now');
-drawnow;
+calcPWV(handles)
+
+
+% --- Executes on button press in RemoveBranch.
+function RemoveBranch_Callback(hObject, eventdata, handles)
+% hObject    handle to RemoveBranch (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+global dcm_obj branchList branchesMasked
+
+[ ~, idbr ] = getChosenBranch(dcm_obj, branchList, handles);
+branchesMasked(end+1) = idbr;
+traceVascularTree(handles)
+msg = sprintf('Removed branch %d and retraced', idbr);
+set(handles.TextUpdate,'String',msg);
+
