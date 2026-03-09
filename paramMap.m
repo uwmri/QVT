@@ -93,7 +93,7 @@ global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
 global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
 global VplanesAllx VplanesAlly VplanesAllz imageData caseFilePath
 global vesselsAnalyzed allNotes 
-global branchJunctions jListStruct
+global branchJunctions jListStructs
 
 % try testing folder so we can abort if the user cancels directory
 % selection
@@ -111,7 +111,7 @@ p = []; %used in cursor updatefunction
 vesselsAnalyzed = {};
 allNotes = cell(length(get(handles.NamePoint,'String')),1);
 branchJunctions = [];
-jListStruct = [];
+jListStructs = [];
 
 % Creates list of all .mat files in selected directory
 d = dir([directory filesep '*.mat']);
@@ -149,7 +149,7 @@ if  fileIndx > 1  %if a pre-processed case is selected
     diam_val = data_struct.diam_val; %diameter of vessels
     branchList = data_struct.branchList; %point locations/labelings
     branchJunctions = data_struct.branchJunctions;
-    jListStruct = data_struct.jListStruct; % list of junctions
+    jListStructs = data_struct.jListStructs; % list of junctions
     flowPerHeartCycle_val = data_struct.flowPerHeartCycle_val; %TA flow
     maxVel_val = data_struct.maxVel_val; %TA max velocities
     velMean_val = data_struct.velMean_val; %TA mean velocities
@@ -187,7 +187,7 @@ else %Load in pcvipr data from scratch
         maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
         VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
         timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-        bnumMeanFlow,bnumStdvFlow,StdvFromMean,branchJunctions,jListStruct] ...
+        bnumMeanFlow,bnumStdvFlow,StdvFromMean,branchJunctions,jListStructs] ...
         = loadHDF5(directory,handles);
         % = loadHDF5_py(directory,handles); 
     elseif exist([directory filesep 'CD.dat'],'file')
@@ -215,7 +215,7 @@ else %Load in pcvipr data from scratch
     data_struct.diam_val = diam_val;
     data_struct.branchList = branchList;
     data_struct.branchJunctions = branchJunctions;
-    data_struct.jListStruct = jListStruct;
+    data_struct.jListStructs = jListStructs;
     data_struct.flowPerHeartCycle_val = flowPerHeartCycle_val;
     data_struct.maxVel_val = maxVel_val;
     data_struct.velMean_val = velMean_val;
@@ -1119,6 +1119,8 @@ delete(hObject);
 
 
 function d = rowvecdiff(a, b)
+% copied to feature_extraction.m and dropped it in the one place where
+% I needed it
 % assume a, b are row vectors with the same dimensions (1xn)
 
 dvec = a - b;
@@ -1141,9 +1143,9 @@ function junctdata = computeJunction(idjunc, rlastbrpt, dflow, dabsolut, lbranch
 % junctdata    a structure containing information about this junction
 
 
-global jListStruct
+global jListStructs
 
-junctdata = jListStruct(idjunc);
+junctdata = jListStructs(idjunc);
 djtobr = rowvecdiff(rlastbrpt, junctdata.pos);
 if lbranch < 0
     djtobr = -djtobr;
@@ -1155,8 +1157,8 @@ junctdata.used = 0;
 junctdata.idj = idjunc; % we forget ID if not included in this struct
 
 
-
-function [ idxthisbranch, dtot, jlist ] = processBranch(varargin)
+function jlist = processBranch(varargin)
+% function [ idxthisbranch, dtot, jlist ] = processBranch(varargin)
 % add a branch to the tree and compute distance metrics
 % 1 or 4 arguments
 % if one argument, it is row # for seed point in branchList
@@ -1174,34 +1176,23 @@ function [ idxthisbranch, dtot, jlist ] = processBranch(varargin)
 % jlist      a cell array containing the info about junctions that need to
 %               be added to the list for processing
 
-% branchJunctions has size nbranches x 2
-% jListStruct has one per junction
+% branchJunctions is an nx1 cell array where each element is an mx2 matrix
+% jListStructs has one per junction
 
-global branchList branchesInTree branchJunctions jListStruct
+global branchList branchesInTree branchJunctions jListStructs
+global logTreePoints treeDistances
 
 % initialize outputs so it doesn't throw an error when exiting early
-idxthisbranch = [];
-jlist = {};
-dtot = [];
-if nargin == 1
-    idbranch = branchList(varargin{1},4);
-    idjunc = 0;
-    jsign = 0; % +/- 1 depending on which end of the branch we are on
-elseif nargin == 4
-    idbranch = varargin{1};
-    idjunc = varargin{2};
-    if branchJunctions(idbranch,1) == idjunc
-        jsign = 1;
-    elseif branchJunctions(idbranch,2) == idjunc
-        jsign = -1; % starting from the sink means counting backwards
-    else
-        disp('processBranch() called with invalid branch/junction pairing')
-        return
-    end
+jlist = [];
+if nargin == 2
+    idbranch = branchList(varargin{2},4);
+elseif nargin == 5
+    idbranch = varargin{2};
 else
     disp('programming error, invalid number of arguments to processBranch()')
     return
 end
+skipjunctions = varargin{1};
 
 if ismember(idbranch, branchesInTree) 
     return 
@@ -1211,43 +1202,58 @@ idxthisbranch = branchList(:,4) == idbranch;
 ptsthisbranch = branchList(idxthisbranch,:);
 szbranch = sum(idxthisbranch); % idxthisbranch is a 1xn or nx1 of logicals
 
-if nargin == 1
-    ptnumber = branchList(varargin{1},5);
-    dflowstartpt = 0;
-    dabsstartpt = 0;
-else
-    if jsign < 0
-        ptnumber = szbranch;
-    else
-        ptnumber = 1;
-    end
-    doffset = rowvecdiff(ptsthisbranch(ptnumber,1:3), jListStruct(idjunc).pos);
-    dflowstartpt = varargin{3} + jsign*doffset;
-    dabsstartpt = varargin{4} + doffset;
-end
-
 % calculate distances along the branch
 dmag = zeros(1,szbranch);
 for ii = 2:szbranch
     dmag(ii) = rowvecdiff(ptsthisbranch(ii,1:3), ptsthisbranch(ii-1,1:3));
 end
 dtot = cumsum(dmag);
-dtot = dtot - dtot(ptnumber) + dflowstartpt;
+lenbranch = dtot(end);
 
-% store junction or junctions
-if ptnumber ~= 1 && branchJunctions(idbranch,1) > 0
-    jlist{1} = computeJunction(branchJunctions(idbranch,1), ... 
-        ptsthisbranch(1,1:3), dflowstartpt, dabsstartpt, dtot(1));
-    kkjunc = 2;
+if nargin == 2
+    doffsetsrc = dtot(branchList(varargin{2},5)); % offset from branch source
+    doffsetsink = lenbranch - doffsetsrc;
+    dsignedends = [ (-doffsetsrc) doffsetsink ];
+    dabsends = [ doffsetsrc doffsetsink ];
+    dtot = dtot - doffsetsrc;
 else
-    kkjunc = 1;
+    dsigninit = varargin{4};
+    dabsinit = varargin{5};
+    if varargin{3} < 0 % starting from source end, i.e. point 0, of branch
+        dsignedends = dsigninit + [ 0 lenbranch ];
+        dabsends = dabsinit + [ 0 lenbranch ];
+    else
+        dsignedends = dsigninit - [ lenbranch 0 ];
+        dabsends = dabsinit + [ lenbranch 0 ];
+    end
+    dtot = dtot + dsignedends(1);
 end
-if ptnumber ~= size(ptsthisbranch, 1) && branchJunctions(idbranch,2) > 0
-    jlist{kkjunc} = computeJunction(branchJunctions(idbranch,2), ...
-        ptsthisbranch(szbranch,1:3), dflowstartpt, dabsstartpt, dtot(end));
+
+jlist = [];
+bjmat = branchJunctions{idbranch};
+for k=1:size(bjmat,1)
+    idj = bjmat(k,1);
+    if skipjunctions(idj) % this is junctionsProcessed from the caller
+        continue
+    end
+    % convert -1, +1 to 1,2
+    idxend = (3 + bjmat(k,2))/2;
+    % find this branch in jListStructs(idj)
+    idxbr = find(jListStructs(idj).idbranches == idbranch);
+    dbrtoj = jListStructs(idj).distbr(idxbr);
+    dseedsigntest = dsignedends(idxend) + dbrtoj;
+    dseedabstest = dabsends(idxend) + abs(dbrtoj);
+
+    if dseedabstest < jListStructs(idj).dseedsigned
+        jListStructs(idj).dseedsigned = dseedsigntest;
+        jListStructs(idj).dseedabsolute = dseedabstest;
+        jlist(end+1) = idj; %#ok<AGROW>
+    end
 end
 
 branchesInTree(end+1) = idbranch;
+logTreePoints(idxthisbranch) = true;
+treeDistances(idxthisbranch) = dtot;
 
 function calcPWV(handles)
 
@@ -1285,47 +1291,65 @@ set(handles.TextUpdate, 'String', sprintf('PWV = %.3f m/sec', params(end)));
 function traceVascularTree(handles)
 % traces out the vascular tree. Uses only global variables, ugh
 
-global branchList logTreePoints branchesInTree treeDistances
+global branchList jListStructs logTreePoints branchesInTree treeDistances
 global idxSeedPoint branchesMasked
 
+% initialize
 branchesInTree = branchesMasked;
 npts = size(branchList,1);
 logTreePoints = false(npts, 1);
 treeDistances = zeros(npts, 1);
-[ idxbrpts, distpts, jqueue ] = processBranch(idxSeedPoint);
-if isempty(idxbrpts)
-    set(handles.TextUpdate,'String','Tree generation failed');
+
+njtot = length(jListStructs);
+junctionsInTree = false(njtot, 1);
+junctionsProcessed = false(njtot, 1);
+for ii=1:njtot
+    jListStructs(ii).dseedsigned = 1e20;
+    jListStructs(ii).dseedabsolute = 1e20;
+end
+
+jtoadd = processBranch(junctionsProcessed, idxSeedPoint);
+if isempty(jtoadd) || any(jtoadd < 0)
+    set(handles.TextUpdate,'String','Seed branch has no junctions');
     return
 end
-logTreePoints(idxbrpts) = true;
-treeDistances(idxbrpts) = distpts;
+junctionsInTree(jtoadd) = true;
 
 while true
-    idjq = 0;
+    % find nearest junction
+    idj = 0;
     dmin = 1e20;
-    for ii = 1:length(jqueue)
-        if jqueue{ii}.used < 1 && jqueue{ii}.dabsolut < dmin
-            idjq = ii;
-            dmin = jqueue{ii}.dabsolut;
+    for ii = 1:njtot
+        if junctionsInTree(ii) && ~junctionsProcessed(ii)
+            dtest = jListStructs(ii).dseedabsolute;
+            if dtest < dmin
+                idj = ii;
+                dmin = dtest;
+            end
         end
     end
-    if idjq < 1
+    if idj < 1
         break
     end
-    jqueue{idjq}.used = 2;
-    jtest = jqueue{idjq};
-    for ii = 1:length(jtest.idbrs)
-        if ismember(jtest.idbrs(ii), branchesInTree)
+    junctionsProcessed(idj) = true;
+
+    % process each branch that meets the junction
+    for ii = 1:length(jListStructs(idj).idbranches)
+        idbr = jListStructs(idj).idbranches(ii);
+        if ismember(idbr,branchesInTree)
             continue
         end
-        [ idxbrpts, distpts, jnew ] = processBranch(jtest.idbrs(ii), ...
-            jtest.idj, jtest.dflow, jtest.dabsolut);
-        logTreePoints(idxbrpts) = true;
-        treeDistances(idxbrpts) = distpts;
-        if ~isempty(jnew)
-            newqids = (1:length(jnew)) + length(jqueue);
-            jqueue(newqids) = jnew;
+
+        djunctobr = jListStructs(idj).distbr(ii);
+        if djunctobr > 0 % this branch flows into this junction
+            iiend = 1;
+        else
+            iiend = -1;
         end
+        dsigned = jListStructs(idj).dseedsigned - djunctobr;
+        dabs = jListStructs(idj).dseedabsolute + abs(djunctobr);
+        jtoadd = processBranch(junctionsProcessed, idbr, iiend, dsigned, dabs);
+        junctionsInTree(jtoadd) = true;
     end
 end
 

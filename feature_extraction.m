@@ -1,4 +1,4 @@
-function [branchList,branchJunctions,jListStruct] = feature_extraction( ...
+function [branchList,branchJunctions,junctionList] = feature_extraction( ...
     sortingCriteria,spurLength,vMean,segment,handles)
 %FEATURE_EXTRACTION: Create vessel centerlines and label branches
 %   Used by: loadpcvipr.m
@@ -88,84 +88,119 @@ end
 branchList = branchListSmooth;
 
 %% match junctions to branches
-% RVC December 2025
+% RVC starting December 2025
 imgsize = size(cl); % needed ?
 nbrnch = max(branchList(:,4));
-branchJunctions = - ones(nbrnch, 2);
+branchJunctions = cell(nbrnch, 1);
 % preallocate array using dummy structure
-njunc = max(junctionList(:,4)); % is this used more than once?
-junctemp.pos = zeros(1,3);
-junctemp.idbrs = [];
-junctemp.brposmat = [];
-jListStruct = repmat(junctemp, 1, njunc);
+njunc = max(junctionList(:,4)); % yes this is used more than once
+% junctionList: first column is arrays of branch IDs for the junction nx2,
+% second column is 1x3 arrays representing junction position
+jtmp.idbranches = [];
+jtmp.brpos = zeros(0,3);
+jtmp.rjunc = zeros(1,3);
+jtmp.distbr = zeros(0,1);
+jtmp.dseedsigned = 0;
+jtmp.dseedabsolute = 0;
+junctionList = repmat(jtmp,njunc,1); 
 
 for k=1:nbrnch
     thisbrlist = branchList(branchList(:,4)==k,:);
     ri = thisbrlist(1,1:3);
     d = size(thisbrlist);
     rf = thisbrlist(d(1),1:3);
-    idbri = findJunctions(ri, junctionMat, imgsize);
-    idbrf = findJunctions(rf, junctionMat, imgsize);
-    if idbri < 0 && idbrf < 0
+    idbri = findJunctions(ri, junctionMat, imgsize); % ids at start/source of branch
+    idbrf = findJunctions(rf, junctionMat, imgsize); % ids at branch sink
+    if isempty(idbri) && isempty(idbrf)
+        fprintf('debugging: no junctions for branch %d\n',k)
         continue
     end
-    if idbri == idbrf
+    if any(ismember(idbri, idbrf))
         fprintf('WARNING: branch %d appears to be a loop, discarding\n',k);
         continue
     end
-    if idbri > 0
-        branchJunctions(k,1) = idbri;
-        n = 1 + length(jListStruct(idbri).idbrs);
-        jListStruct(idbri).idbrs(n) = k;
-        jListStruct(idbri).brposmat(n,:) = ri;
+
+    nji = length(idbri);
+    njf = length(idbrf);
+    idxlisti = 1:nji;
+    idxlistf = nji + (1:njf);
+    branchJunctions{k} = zeros(nji+njf,2);
+    branchJunctions{k}(idxlisti,1) = idbri;
+    branchJunctions{k}(idxlistf,1) = idbrf;
+    branchJunctions{k}(idxlisti,2) = -1;
+    branchJunctions{k}(idxlistf,2) = 1;
+    for kk = 1:nji
+        junctionList(idbri(kk)).idbranches(end+1) = k;
+        junctionList(idbri(kk)).brpos(end+1,:) = ri;
     end
-    if idbrf > 0
-        branchJunctions(k,2) = idbrf;
-        n = 1 + length(jListStruct(idbrf).idbrs); % ugh, repitition
-        jListStruct(idbrf).idbrs(n) = k;
-        jListStruct(idbrf).brposmat(n,:) = rf;
+    for kk = 1:njf
+        junctionList(idbrf(kk)).idbranches(end+1) = k;
+        junctionList(idbrf(kk)).brpos(end+1,:) = rf;
     end
 end
 
+% compute position of each junction
 for k=1:njunc
-    n = length(jListStruct(k).idbrs);
-    if n > 1
-        jListStruct(k).pos = mean(jListStruct(k).brposmat);
-    elseif n == 1
-        jListStruct(k).pos = jListStruct(k).brposmat;
+    nbr = length(junctionList(k).idbranches);
+    if nbr < 1
+        continue
+    elseif nbr == 1
+        junctionList(k).rjunc = junctionList(k).brpos(1,:);
+    else
+        junctionList(k).rjunc = mean(junctionList(k).brpos);
+    end
+    for kk=1:nbr
+        brjuncmat = branchJunctions{junctionList(k).idbranches(kk)};
+        indx = find(brjuncmat(:,1) == k);
+        if length(indx) ~= 1
+            disp('PROGRAMMING ERROR: junction assigned to branch multiple times')
+            return
+        end
+        dvec = junctionList(k).rjunc - junctionList(k).brpos(kk,:);
+        % distbr should be positive for flow into the junction
+        junctionList(k).distbr(kk) = sqrt(dvec*dvec')*brjuncmat(indx,2);
     end
 end
 
 end
 
-function idbr = findJunctions(r, jMat, imgsz)
-% return the id of the junction nearest to r
+function idjuncs = findJunctions(r, jMat, imgsz)
+% return the ids of the junctions near r
 
-idbr = -1;
-% for ii=1:3
-%     if r(ii) < 2 || r(ii) + 2 > imgsz(ii)
-%         return % don't look at edges of image
-%     end
-% end
-submat = jMat(juncsearch(r(1), imgsz(1)), juncsearch(r(2), imgsz(2)), ...
-    juncsearch(r(3), imgsz(3)));
-[ ~, ~, brlist ] = find(submat);
-if isempty(brlist)
+xrng = limitnbrs(r(1), imgsz(1));
+yrng = limitnbrs(r(2), imgsz(2));
+zrng = limitnbrs(r(3), imgsz(3));
+[ rvec, idxvec, jlist ] = find(jMat(xrng,yrng,zrng));
+idjuncs = unique(jlist);
+if isempty(idjuncs)
     return
 end
-ulist = unique(brlist);
-if length(ulist) == 1
-    idbr = ulist(1);
-    return
+
+roffset = [ r(1)-xrng(1)+1, r(2)-yrng(1)+1, r(3)-zrng(1)+1 ];
+% idxvec is linear indices so we need to convert to c(olumn)vec and
+% p(age)vec
+[ cvec, pvec ] = ind2sub([ length(yrng), length(zrng) ], idxvec);
+mindists = 20*ones(size(idjuncs));
+for k = 1:length(jlist)
+    indxthisj = find(idjuncs == jlist(k));
+    rdiff = roffset - [ rvec(k), cvec(k), pvec(k) ];
+    d = sqrt(rdiff*rdiff');
+    if d < mindists(indxthisj)
+        mindists(indxthisj) = d;
+    end
 end
-disp('found multiple junction candidates, end coordinate is')
-disp(r)
-disp('candidate junctions are')
-disp(ulist)
+
+idfinal = [];
+for k = 1:length(mindists)
+    if mindists(k) < 2.0001 % this, or <= 2 ?? to go higher, limitnbrs() should return longer arrays
+        idfinal(end+1) = idjuncs(k); %#ok<AGROW>
+    end
+end
+idjuncs = idfinal;
 
 end
 
-function idxarray = juncsearch(x, lim)
+function idxarray = limitnbrs(x, lim)
 ii = ceil(x-2);
 if ii < 1
     ii = 1;
