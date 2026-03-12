@@ -182,22 +182,22 @@ if  fileIndx > 1  %if a pre-processed case is selected
     set(handles.TextUpdate,'String','Please Select Analysis Plane Location'); drawnow;
 
 else %Load in pcvipr data from scratch
-    if exist([directory filesep 'Flow.h5'],'file')
-        [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_val, ...
-        maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
-        VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
-        timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-        bnumMeanFlow,bnumStdvFlow,StdvFromMean,branchJunctions,jListStructs] ...
-        = loadHDF5(directory,handles);
-        % = loadHDF5_py(directory,handles); 
-    elseif exist([directory filesep 'CD.dat'],'file')
-        set(handles.TextUpdate,'String','processing of old CD.dat recons not supported'); drawnow;
-        return
-    else
-        set(handles.TextUpdate,'String','pcvipr not found in that directory'); drawnow;
-        return
-    end 
-    
+    if ~exist([directory filesep 'Flow.h5'],'file')
+        directory = [ directory filesep 'H5' ];
+        if ~exist([directory filesep 'Flow.h5'],'file')
+            set(handles.TextUpdate,'String','Flow.h5 not found in that directory'); drawnow;
+            return
+        end
+    end
+
+    [nframes,matrix,res,timeres,VENC,area_val,diam_val,flowPerHeartCycle_val, ...
+    maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
+    VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
+    timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
+    bnumMeanFlow,bnumStdvFlow,StdvFromMean,branchJunctions,jListStructs] ...
+    = loadHDF5(directory,handles);
+    % = loadHDF5_py(directory,handles); 
+ 
     origdatadir = directory;
     directory = uigetdir(origdatadir); %select saving dir 
     % Save all variables needed to run parametertool. This will be used
