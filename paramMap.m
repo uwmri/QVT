@@ -23,7 +23,7 @@ function varargout = paramMap(varargin)
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 % Edit the above text to modify the response to help paramMap
-% Last Modified by GUIDE v2.5 10-Feb-2026 23:12:34
+% Last Modified by GUIDE v2.5 02-Apr-2026 17:24:36
 
 % Developed by Carson Hoffman and Grant Roberts
 % University of Wisconsin-Madison 2019
@@ -194,7 +194,7 @@ else %Load in pcvipr data from scratch
     maxVel_val,PI_val,RI_val,flowPulsatile_val,velMean_val, ...
     VplanesAllx,VplanesAlly,VplanesAllz,Planes,branchList,segment,r, ...
     timeMIPcrossection,segmentFull,vTimeFrameave,MAGcrossection, imageData, ...
-    bnumMeanFlow,bnumStdvFlow,StdvFromMean,branchJunctions,jListStructs] ...
+    bnumMeanFlow,bnumStdvFlow,StdvFromMean] ...
     = loadHDF5(directory,handles);
     % = loadHDF5_py(directory,handles); 
  
@@ -346,6 +346,8 @@ fullCData = flowPerHeartCycle_val; %initialize fullCData color as flow
 
 steps = [1./(nframes-1) 10./(nframes-1)]; %set so one 'slide' moves to the next slice exactly
 set(handles.VcrossTRslider,'SliderStep',steps);
+
+inittree
 
 
 % --- Outputs from this function are returned to the command line.
@@ -830,8 +832,10 @@ view(fig.CurrentAxes,[90,0])
 % function to specify points to mask in the main GUI based on logical
 % array given as argument
 function maskangiogrambranches(logpoints, handles)
-global area_val branchList hscatter PI_val RI_val
+global area_val branchList hscatter PI_val RI_val dcm_obj hDataTip
 global velMean_val diam_val maxVel_val flowPerHeartCycle_val StdvFromMean
+
+[ idxCursor, ~ ] = getChosenBranch(dcm_obj, branchList, handles);
 
 hscatter.XData = branchList(logpoints,1);
 hscatter.YData = branchList(logpoints,2);
@@ -857,6 +861,8 @@ switch str{val}
     case str{val}
         hscatter.CData = PI_val(logpoints);
 end
+
+set(hDataTip,'Position',branchList(idxCursor,1:3))
 
 function updateAreaSlideOrAreaInvert(handles)
 global branchList AveAreaBranch
@@ -978,6 +984,7 @@ if isempty(info_struct)
     idxbr = [];
     return
 end
+% TODO debug this to decide how we make sure we only get one branch
 ptList = [info_struct.Position];
 ptList = reshape(ptList,[3,numel(ptList)/3])';
 pindex = zeros(size(ptList,1),1);
@@ -991,9 +998,9 @@ for n = 1:size(ptList,1)
 end
 idxbr = brList(pindex,4);
 % for debugging
-disp('pindex list:')
-disp(pindex)
-fprintf('branch # %d\n', idxbr)
+% disp('pindex list:')
+% disp(pindex)
+% fprintf('branch # %d\n', idxbr)
 
 function txt = myupdatefcn_all(empt,event_obj)
 % Customizes text of data tips
@@ -1258,15 +1265,18 @@ treeDistances(idxthisbranch) = dtot;
 function calcPWV(handles)
 
 global branchList logTreePoints treeDistances flowPulsatile_val
-global res nframes timeres idxSeedPoint
+global res nframes timeres branchesInTree
 
-if isempty(idxSeedPoint)
-    set(handles.TextUpdate, 'String', 'Set seed point, then calculate PWV');
+if isempty(branchesInTree)
+    set(handles.TextUpdate, 'String', 'Select branch(es), then calculate PWV');
     return
 end
 
+% flowPulsatile_val is npts x nframes (npts x 20)
 treeflow = flowPulsatile_val(logTreePoints,:);
-treedistmm = res*treeDistances(logTreePoints,:); % convert distances pixels to mm
+% treeDistances 1-d or but implied 2-d in the following line, modified here
+% to be 1-d (not tested)
+treedistmm = res*treeDistances(logTreePoints); % convert distances pixels to mm
 lentree = sum(logTreePoints); % is a 1xn or nx1 of logicals
 
 % need to normalize flow
@@ -1354,40 +1364,156 @@ while true
 end
 
 maskangiogrambranches(logTreePoints, handles)
-set(handles.HideBranches,'Value',1)
+set(handles.TreeOnly,'Value',1)
 set(handles.TextUpdate,'String','Traced nearby vascular tree');
 
+function jdatastruct = junctionCalc(rnew, isgnnew, rold, dold, isgnold)
 
-% --- Executes on button press in AddSeedPoint.
-function AddSeedPoint_Callback(hObject, eventdata, handles)
-% hObject    handle to AddSeedPoint (see GCBO)
+dsep = rowvecdiff(rold, rnew);
+if isgnnew*isgnold > 0
+    dnew = dold;
+    % penalty for matching two sources or two sinks
+    if dsep > 10
+        dsep = 2*dsep;
+    else
+        dsep = dsep + 10;
+    end
+else
+    % add if existing branch is a sink and new branch is source
+    dnew = dold + dsep*isgnold;
+end
+jdatastruct.isgn = isgnnew;
+jdatastruct.cost = dsep;
+jdatastruct.dist = dnew;
+
+
+function s = dfltbranchstruct(varargin)
+
+s.dsrc = 1e9;
+s.dsink = 1e9;
+if nargin > 2
+    s.rsink = varargin{3};
+else
+    s.rsink = zeros(1,3);
+end
+if nargin > 1
+    s.rsrc = varargin{2};
+else
+    s.rsrc = s.rsink;
+end
+if nargin > 0
+    s.id = varargin{1};
+else
+    s.id = -1;
+end
+
+% --- Executes on button press in AddBranch.
+function AddBranch_Callback(hObject, eventdata, handles)
+% hObject    handle to AddBranch (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global dcm_obj branchList idxSeedPoint branchesMasked
+global dcm_obj branchList logTreePoints branchesInTree treeDistances
 
-branchesMasked = []; % reset this
-[ idxSeedPoint, ~ ] = getChosenBranch(dcm_obj, branchList, handles);
-traceVascularTree(handles)
+[ idxCursor, idbranch ] = getChosenBranch(dcm_obj, branchList, handles);
+npriorbr = length(branchesInTree);
+for ii = 1:npriorbr
+    if branchesInTree(ii).id == idbranch
+        m = sprintf('branch %d is already included in the tree',idbranch);
+        set(handles.TextUpdate,'String',m);
+        return
+    end
+end
 
-% --- Executes on button press in DeleteAllSeeds.
-function DeleteAllSeeds_Callback(hObject, eventdata, handles)
-% hObject    handle to DeleteAllSeeds (see GCBO)
+% compute distances along this branch
+idxthisbranch = branchList(:,4) == idbranch;
+ptsthisbranch = branchList(idxthisbranch,:);
+brdata = dfltbranchstruct(idbranch, ptsthisbranch(1,1:3), ...
+    ptsthisbranch(end,1:3));
+
+szbranch = sum(idxthisbranch); % idxthisbranch is a 1xn or nx1 of logicals
+dmag = zeros(1,szbranch);
+for ii = 2:szbranch
+    dmag(ii) = rowvecdiff(ptsthisbranch(ii,1:3), ptsthisbranch(ii-1,1:3));
+end
+dtot = cumsum(dmag);
+lenbranch = dtot(end);
+
+if npriorbr > 0
+    % if not the first, figure out where this is relative to prior branches
+    jdatacells = cell(1,4*npriorbr);
+    % there must be a better way
+    for ii = 1:npriorbr
+        idxoffset = 4*(ii-1);
+        jdatacells{1+idxoffset} = junctionCalc(brdata.rsrc, -1, ...
+            branchesInTree(ii).rsrc, branchesInTree(ii).dsrc, -1);
+        jdatacells{2+idxoffset} = junctionCalc(brdata.rsrc, -1, ...
+            branchesInTree(ii).rsink, branchesInTree(ii).dsink, 1);
+        jdatacells{3+idxoffset} = junctionCalc(brdata.rsink, 1, ...
+            branchesInTree(ii).rsrc, branchesInTree(ii).dsrc, -1);
+        jdatacells{4+idxoffset} = junctionCalc(brdata.rsink, 1, ...
+            branchesInTree(ii).rsink, branchesInTree(ii).dsink, 1);
+    end
+    idxlow = 0;
+    mincost = 1e20;
+    for ii = 1:(4*npriorbr)
+        if jdatacells{ii}.cost < mincost
+            mincost = jdatacells{ii}.cost;
+            idxlow = ii;
+        end
+    end
+    if idxlow < 1
+        m = sprintf('programming error: failed to add branch %d',idbranch);
+        set(handles.TextUpdate,'String',m);
+        return
+    end
+    brdata.dsrc = jdatacells{idxlow}.dist;
+    if jdatacells{idxlow}.isgn > 0
+        brdata.dsink = brdata.dsrc;
+        brdata.dsrc = brdata.dsink - lenbranch;
+    else
+        brdata.dsink = brdata.dsrc + lenbranch;
+    end
+    dtot = dtot + brdata.dsrc;
+else
+    doffset = dtot(branchList(idxCursor,5));
+    brdata.dsrc = - doffset;
+    dtot = dtot - doffset;
+    brdata.dsink = lenbranch - doffset;
+end
+
+logTreePoints(idxthisbranch) = true;
+treeDistances(idxthisbranch) = dtot;
+branchesInTree(end+1) = brdata;
+set(handles.TreeOnly,'Value',1)
+set(handles.TextUpdate,'String',sprintf('Added branch %d',idbranch));
+maskangiogrambranches(logTreePoints, handles)
+
+function inittree()
+
+global branchList logTreePoints branchesInTree treeDistances
+
+branchesInTree = repmat(dfltbranchstruct,1,0);
+npts = size(branchList,1);
+logTreePoints = false(npts, 1);
+treeDistances = zeros(npts, 1);
+
+
+% --- Executes on button press in ClearTree.
+function ClearTree_Callback(hObject, eventdata, handles)
+% hObject    handle to ClearTree (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global idxSeedPoint branchesMasked
-
-idxSeedPoint = [];
-branchesMasked = [];
+inittree
 updateAreaSlideOrAreaInvert(handles) % revert to threshold based on Area slider
 set(handles.TextUpdate,'String','Seed point reset');
 % no we don't need drawnow at the end of a callback fcn
 
 
-% --- Executes on button press in HideBranches.
-function HideBranches_Callback(hObject, eventdata, handles)
-% hObject    handle to HideBranches (see GCBO)
+% --- Executes on button press in TreeOnly.
+function TreeOnly_Callback(hObject, eventdata, handles)
+% hObject    handle to TreeOnly (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
@@ -1411,9 +1537,9 @@ function computePWV_Callback(hObject, eventdata, handles)
 calcPWV(handles)
 
 
-% --- Executes on button press in RemoveBranch.
-function RemoveBranch_Callback(hObject, eventdata, handles)
-% hObject    handle to RemoveBranch (see GCBO)
+% --- Executes on button press in TrimBranch.
+function TrimBranch_Callback(hObject, eventdata, handles)
+% hObject    handle to TrimBranch (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
@@ -1425,3 +1551,33 @@ traceVascularTree(handles)
 msg = sprintf('Removed branch %d and retraced', idbr);
 set(handles.TextUpdate,'String',msg);
 
+function walkcallbacks(isign, handles)
+
+global dcm_obj branchList hDataTip
+
+[ idxCursor, ~ ] = getChosenBranch(dcm_obj, branchList, handles);
+idbr = branchList(idxCursor,4);
+idxCursor = idxCursor + isign;
+if branchList(idxCursor,4) ~= idbr
+    set(handles.TextUpdate,'String','reached end of branch');
+else
+    set(hDataTip,'Position',branchList(idxCursor,1:3))
+    set(handles.TextUpdate,'String','');
+end
+
+
+% --- Executes on button press in WalkUpstream.
+function WalkUpstream_Callback(hObject, eventdata, handles)
+% hObject    handle to WalkUpstream (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+walkcallbacks(-1, handles)
+
+% --- Executes on button press in WalkDownstream.
+function WalkDownstream_Callback(hObject, eventdata, handles)
+% hObject    handle to WalkDownstream (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+walkcallbacks(1, handles)
