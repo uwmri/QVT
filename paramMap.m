@@ -93,7 +93,6 @@ global dcm_obj fig hpatch hscatter Labeltxt cbar hDataTip SavePath
 global MAGcrossection bnumMeanFlow bnumStdvFlow StdvFromMean
 global VplanesAllx VplanesAlly VplanesAllz imageData caseFilePath
 global vesselsAnalyzed allNotes 
-global branchJunctions jListStructs
 
 % try testing folder so we can abort if the user cancels directory
 % selection
@@ -110,8 +109,6 @@ p = []; %used in cursor updatefunction
 
 vesselsAnalyzed = {};
 allNotes = cell(length(get(handles.NamePoint,'String')),1);
-branchJunctions = [];
-jListStructs = [];
 
 % Creates list of all .mat files in selected directory
 d = dir([directory filesep '*.mat']);
@@ -148,8 +145,6 @@ if  fileIndx > 1  %if a pre-processed case is selected
     area_val = data_struct.area_val; %area of vessels
     diam_val = data_struct.diam_val; %diameter of vessels
     branchList = data_struct.branchList; %point locations/labelings
-    branchJunctions = data_struct.branchJunctions;
-    jListStructs = data_struct.jListStructs; % list of junctions
     flowPerHeartCycle_val = data_struct.flowPerHeartCycle_val; %TA flow
     maxVel_val = data_struct.maxVel_val; %TA max velocities
     velMean_val = data_struct.velMean_val; %TA mean velocities
@@ -214,8 +209,6 @@ else %Load in pcvipr data from scratch
     data_struct.area_val = area_val;
     data_struct.diam_val = diam_val;
     data_struct.branchList = branchList;
-    data_struct.branchJunctions = branchJunctions;
-    data_struct.jListStructs = jListStructs;
     data_struct.flowPerHeartCycle_val = flowPerHeartCycle_val;
     data_struct.maxVel_val = maxVel_val;
     data_struct.velMean_val = velMean_val;
@@ -1134,137 +1127,9 @@ dvec = a - b;
 d = sqrt(dvec*dvec');
 
 
-function junctdata = computeJunction(idjunc, rlastbrpt, dflow, dabsolut, lbranch)
-% compute information about the junction based on processing of its "first"
-% branch
-% idjunc       id for the junction in question
-% rlastbrpt    position of the point at end of branch nearest the junction
-%     these two inputs are inputs to processBranch, unchanged:
-% dflow        signed distance to the seed point from the start point on 
-%                   this branch (add lbranch to get to the rlastbrpt)
-% dabsolut     total distance to the seed point from start point on this
-%                   branch
-% lbranch      signed length of this branch, or distance to seed if seed is
-%                   on this branch
-% output:
-% junctdata    a structure containing information about this junction
-
-
-global jListStructs
-
-junctdata = jListStructs(idjunc);
-djtobr = rowvecdiff(rlastbrpt, junctdata.pos);
-if lbranch < 0
-    djtobr = -djtobr;
-end
-dtot = lbranch + djtobr;
-junctdata.dflow = dflow + dtot;
-junctdata.dabsolut = dabsolut + abs(dtot);
-junctdata.used = 0;
-junctdata.idj = idjunc; % we forget ID if not included in this struct
-
-
-function jlist = processBranch(varargin)
-% function [ idxthisbranch, dtot, jlist ] = processBranch(varargin)
-% add a branch to the tree and compute distance metrics
-% 1 or 4 arguments
-% if one argument, it is row # for seed point in branchList
-%
-% if four arguments:
-% branch id
-% junction id
-% displacement (signed distance) at junction
-% absolute distance to junction from seed point
-% 
-% outputs:
-% idxthisbranch   logical array with the indices of this branch's rows in
-%                       branchList set true
-% dtot       array of displacement along the branch (in pixels, NOT mm!!)
-% jlist      a cell array containing the info about junctions that need to
-%               be added to the list for processing
-
-% branchJunctions is an nx1 cell array where each element is an mx2 matrix
-% jListStructs has one per junction
-
-global branchList branchesInTree branchJunctions jListStructs
-global logTreePoints treeDistances
-
-% initialize outputs so it doesn't throw an error when exiting early
-jlist = [];
-if nargin == 2
-    idbranch = branchList(varargin{2},4);
-elseif nargin == 5
-    idbranch = varargin{2};
-else
-    disp('programming error, invalid number of arguments to processBranch()')
-    return
-end
-skipjunctions = varargin{1};
-
-if ismember(idbranch, branchesInTree) 
-    return 
-end
-
-idxthisbranch = branchList(:,4) == idbranch;
-ptsthisbranch = branchList(idxthisbranch,:);
-szbranch = sum(idxthisbranch); % idxthisbranch is a 1xn or nx1 of logicals
-
-% calculate distances along the branch
-dmag = zeros(1,szbranch);
-for ii = 2:szbranch
-    dmag(ii) = rowvecdiff(ptsthisbranch(ii,1:3), ptsthisbranch(ii-1,1:3));
-end
-dtot = cumsum(dmag);
-lenbranch = dtot(end);
-
-if nargin == 2
-    doffsetsrc = dtot(branchList(varargin{2},5)); % offset from branch source
-    doffsetsink = lenbranch - doffsetsrc;
-    dsignedends = [ (-doffsetsrc) doffsetsink ];
-    dabsends = [ doffsetsrc doffsetsink ];
-    dtot = dtot - doffsetsrc;
-else
-    dsigninit = varargin{4};
-    dabsinit = varargin{5};
-    if varargin{3} < 0 % starting from source end, i.e. point 0, of branch
-        dsignedends = dsigninit + [ 0 lenbranch ];
-        dabsends = dabsinit + [ 0 lenbranch ];
-    else
-        dsignedends = dsigninit - [ lenbranch 0 ];
-        dabsends = dabsinit + [ lenbranch 0 ];
-    end
-    dtot = dtot + dsignedends(1);
-end
-
-jlist = [];
-bjmat = branchJunctions{idbranch};
-for k=1:size(bjmat,1)
-    idj = bjmat(k,1);
-    if skipjunctions(idj) % this is junctionsProcessed from the caller
-        continue
-    end
-    % convert -1, +1 to 1,2
-    idxend = (3 + bjmat(k,2))/2;
-    % find this branch in jListStructs(idj)
-    idxbr = find(jListStructs(idj).idbranches == idbranch);
-    dbrtoj = jListStructs(idj).distbr(idxbr);
-    dseedsigntest = dsignedends(idxend) + dbrtoj;
-    dseedabstest = dabsends(idxend) + abs(dbrtoj);
-
-    if dseedabstest < jListStructs(idj).dseedsigned
-        jListStructs(idj).dseedsigned = dseedsigntest;
-        jListStructs(idj).dseedabsolute = dseedabstest;
-        jlist(end+1) = idj; %#ok<AGROW>
-    end
-end
-
-branchesInTree(end+1) = idbranch;
-logTreePoints(idxthisbranch) = true;
-treeDistances(idxthisbranch) = dtot;
-
 function calcPWV(handles)
 
-global branchList logTreePoints treeDistances flowPulsatile_val
+global logTreePoints treeDistances flowPulsatile_val
 global res nframes timeres branchesInTree
 
 if isempty(branchesInTree)
@@ -1296,76 +1161,6 @@ options = optimset('Display','iter', 'TolCon', 1e-7, 'TolX', 1e-7, 'TolFun', 1e-
 [params,exitflag,output] = fminunc(costfun, initguess, options);
 set(handles.TextUpdate, 'String', sprintf('PWV = %.3f m/sec', params(end)));
 
-
-
-function traceVascularTree(handles)
-% traces out the vascular tree. Uses only global variables, ugh
-
-global branchList jListStructs logTreePoints branchesInTree treeDistances
-global idxSeedPoint branchesMasked
-
-% initialize
-branchesInTree = branchesMasked;
-npts = size(branchList,1);
-logTreePoints = false(npts, 1);
-treeDistances = zeros(npts, 1);
-
-njtot = length(jListStructs);
-junctionsInTree = false(njtot, 1);
-junctionsProcessed = false(njtot, 1);
-for ii=1:njtot
-    jListStructs(ii).dseedsigned = 1e20;
-    jListStructs(ii).dseedabsolute = 1e20;
-end
-
-jtoadd = processBranch(junctionsProcessed, idxSeedPoint);
-if isempty(jtoadd) || any(jtoadd < 0)
-    set(handles.TextUpdate,'String','Seed branch has no junctions');
-    return
-end
-junctionsInTree(jtoadd) = true;
-
-while true
-    % find nearest junction
-    idj = 0;
-    dmin = 1e20;
-    for ii = 1:njtot
-        if junctionsInTree(ii) && ~junctionsProcessed(ii)
-            dtest = jListStructs(ii).dseedabsolute;
-            if dtest < dmin
-                idj = ii;
-                dmin = dtest;
-            end
-        end
-    end
-    if idj < 1
-        break
-    end
-    junctionsProcessed(idj) = true;
-
-    % process each branch that meets the junction
-    for ii = 1:length(jListStructs(idj).idbranches)
-        idbr = jListStructs(idj).idbranches(ii);
-        if ismember(idbr,branchesInTree)
-            continue
-        end
-
-        djunctobr = jListStructs(idj).distbr(ii);
-        if djunctobr > 0 % this branch flows into this junction
-            iiend = 1;
-        else
-            iiend = -1;
-        end
-        dsigned = jListStructs(idj).dseedsigned - djunctobr;
-        dabs = jListStructs(idj).dseedabsolute + abs(djunctobr);
-        jtoadd = processBranch(junctionsProcessed, idbr, iiend, dsigned, dabs);
-        junctionsInTree(jtoadd) = true;
-    end
-end
-
-maskangiogrambranches(logTreePoints, handles)
-set(handles.TreeOnly,'Value',1)
-set(handles.TextUpdate,'String','Traced nearby vascular tree');
 
 function jdatastruct = junctionCalc(rnew, isgnnew, rold, dold, isgnold)
 
@@ -1407,6 +1202,20 @@ else
     s.id = -1;
 end
 
+% --- test if a branch is already in the tree
+function tf = testBranchInTree(idtest)
+
+global branchesInTree
+
+nbr = length(branchesInTree);
+for ii = 1:nbr
+    if branchesInTree(ii).id == idtest
+        tf = true;
+        return
+    end
+end
+tf = false;
+
 % --- Executes on button press in AddBranch.
 function AddBranch_Callback(hObject, eventdata, handles)
 % hObject    handle to AddBranch (see GCBO)
@@ -1416,13 +1225,10 @@ function AddBranch_Callback(hObject, eventdata, handles)
 global dcm_obj branchList logTreePoints branchesInTree treeDistances
 
 [ idxCursor, idbranch ] = getChosenBranch(dcm_obj, branchList, handles);
-npriorbr = length(branchesInTree);
-for ii = 1:npriorbr
-    if branchesInTree(ii).id == idbranch
-        m = sprintf('branch %d is already included in the tree',idbranch);
-        set(handles.TextUpdate,'String',m);
-        return
-    end
+if testBranchInTree(idbranch)
+    m = sprintf('branch %d is already included in the tree',idbranch);
+    set(handles.TextUpdate,'String',m);
+    return
 end
 
 % compute distances along this branch
@@ -1439,6 +1245,7 @@ end
 dtot = cumsum(dmag);
 lenbranch = dtot(end);
 
+npriorbr = length(branchesInTree);
 if npriorbr > 0
     % if not the first, figure out where this is relative to prior branches
     jdatacells = cell(1,4*npriorbr);
@@ -1507,7 +1314,9 @@ function ClearTree_Callback(hObject, eventdata, handles)
 
 inittree
 updateAreaSlideOrAreaInvert(handles) % revert to threshold based on Area slider
+set(handles.TreeOnly,'Value',0)
 set(handles.TextUpdate,'String','Seed point reset');
+% TODO uncheck the box "show selected tree"
 % no we don't need drawnow at the end of a callback fcn
 
 
@@ -1517,12 +1326,17 @@ function TreeOnly_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global logTreePoints
+global logTreePoints branchesInTree
 
-if get(hObject,'Value') == 0 % don't hide
-    updateAreaSlideOrAreaInvert(handles) % revert to threshold based on Area slider
-else
+nbr = length(branchesInTree);
+ival = get(hObject,'Value');
+if ival ~= 0 && nbr > 0 % hide
     maskangiogrambranches(logTreePoints, handles)
+else
+    updateAreaSlideOrAreaInvert(handles) % revert to threshold based on Area slider
+    if ival ~= 0
+        set(handles.TextUpdate,'String','No branches in tree, nothing to hide');
+    end
 end
 
 
@@ -1531,8 +1345,6 @@ function computePWV_Callback(hObject, eventdata, handles)
 % hObject    handle to computePWV (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-%global branchList 
 
 calcPWV(handles)
 
@@ -1543,13 +1355,35 @@ function TrimBranch_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global dcm_obj branchList branchesMasked
+global dcm_obj branchList logTreePoints
 
-[ ~, idbr ] = getChosenBranch(dcm_obj, branchList, handles);
-branchesMasked(end+1) = idbr;
-traceVascularTree(handles)
-msg = sprintf('Removed branch %d and retraced', idbr);
+[ idxCursor, idbranch ] = getChosenBranch(dcm_obj, branchList, handles);
+if ~testBranchInTree(idbranch)
+    set(handles.TextUpdate,'String',...
+        'Cannot trim a branch that has not been added');
+    return
+end
+if ~logTreePoints(idxCursor)
+    set(handles.TextUpdate,'String','This point has already been removed');
+    return
+end
+
+idxthisbranch = find(branchList(:,4) == idbranch & logTreePoints);
+idxcenter = (idxthisbranch(1) + idxthisbranch(end))/2;
+if idxcenter == idxCursor
+    set(handles.TextUpdate,'String','Ignoring with point at center of branch')
+    return
+end
+if idxCursor < idxcenter
+    idxremove = idxthisbranch(1):idxCursor;
+else
+    idxremove = idxCursor:idxthisbranch(end);
+end
+
+logTreePoints(idxremove) = false;
+msg = sprintf('Trimmed branch %d', idbranch);
 set(handles.TextUpdate,'String',msg);
+maskangiogrambranches(logTreePoints, handles)
 
 function walkcallbacks(isign, handles)
 
