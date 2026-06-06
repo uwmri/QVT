@@ -132,8 +132,8 @@ if  fileIndx > 1  %if a pre-processed case is selected
     % Create excel files save summary data
     col_header = ({'Vessel Label', 'Centerline Point', 'Notes',['Max Velocity < ' num2str(VENC) 'cm/s'], ...
         'Mean Flow ml/s','Pulsatility Index','Branch Number'});
-    xlwrite([SavePath filesep 'SummaryParamTool.xls'],col_header,'Summary_Centerline','A1');
-    xlwrite([SavePath filesep 'SummaryParamTool.xls'],get(handles.NamePoint,'String'),'Summary_Centerline','A2');
+    xlswrite([SavePath filesep 'SummaryParamTool.xls'],col_header,'Summary_Centerline','A1');
+    xlswrite([SavePath filesep 'SummaryParamTool.xls'],get(handles.NamePoint,'String'),'Summary_Centerline','A2');
     
     % New Data Structure
     area_val = data_struct.area_val; %area of vessels
@@ -250,8 +250,8 @@ else %Load in data from scratch
     % Create excel files save summary data
     col_header = ({'Vessel Label', 'Centerline Point', 'Notes',['Max Velocity < ' num2str(VENC) 'cm/s'], ...
         'Mean Flow ml/s','Pulsatility Index','Branch Label'});
-    xlwrite([SavePath filesep 'SummaryParamTool.xls'],col_header,'Summary_Centerline','A1');
-    xlwrite([SavePath filesep 'SummaryParamTool.xls'],get(handles.NamePoint,'String'),'Summary_Centerline','A2');
+    xlswrite([SavePath filesep 'SummaryParamTool.xls'],col_header,'Summary_Centerline','A1');
+    xlswrite([SavePath filesep 'SummaryParamTool.xls'],get(handles.NamePoint,'String'),'Summary_Centerline','A2');
     set(handles.TextUpdate,'String','Please Select Analysis Plane Location'); drawnow;
 end
 
@@ -698,7 +698,7 @@ end
 if isempty(allNotes{get(handles.NamePoint,'Value')+1})
     Notes = get(handles.NoteBox,'String'); %get any notes from notebox
     SummaryInfo = {CLpoint,Notes,MaxVel,flowPerHeartCycle(end-1),PI(end-1),bnum};
-    xlwrite([SavePath filesep 'SummaryParamTool.xls'],SummaryInfo,'Summary_Centerline',SaveRow);
+    xlswrite([SavePath filesep 'SummaryParamTool.xls'],SummaryInfo,'Summary_Centerline',SaveRow);
 end 
 set(handles.TextUpdate,'String','Saving Data..');drawnow;
 
@@ -709,7 +709,7 @@ time_avg = vertcat(col_header,num2cell(real(horzcat(Labels',...
     area,diam,maxVel,meanVel,flowPerHeartCycle,PI,RI))));
 time_avg{end-1,1} = 'Mean';
 time_avg{end,1} = 'Standard Deviation';
-xlwrite([SavePath filesep 'SummaryParamTool.xls'],time_avg,[savename '_T_averaged']);
+xlswrite([SavePath filesep 'SummaryParamTool.xls'],time_avg,[savename '_T_averaged']);
 set(handles.TextUpdate,'String','Saving Data...');drawnow;
 
 % save time-resolved
@@ -720,7 +720,7 @@ col_header2 = horzcat(col_header2, num2cell(real(timeres/1000*linspace(1,nframes
 time_resolve = vertcat(col_header2, col_header3, num2cell(real(horzcat(Labels',flowPulsatile))));
 time_resolve{end-1,1} = 'Mean';
 time_resolve{end,1} = 'Standard Deviation';
-xlwrite([SavePath filesep 'SummaryParamTool.xls'],time_resolve,[savename '_T_resolved']);
+xlswrite([SavePath filesep 'SummaryParamTool.xls'],time_resolve,[savename '_T_resolved']);
 set(handles.TextUpdate,'String','Saving Data....');drawnow;
 
 % Save: interactive window, main GUI , and cross-section images as montage
@@ -798,7 +798,7 @@ set(handles.TextUpdate,'String','Saving Note for Current Vessel');drawnow;
 SaveLoc =  sprintf('C%i',get(handles.NamePoint,'Value')+1);
 Notes = {get(handles.NoteBox,'String')}; %get any notes from notebox
 allNotes(get(handles.NamePoint,'Value')+1) = Notes;
-xlwrite([SavePath filesep 'SummaryParamTool.xls'],Notes,'Summary_Centerline',SaveLoc);
+xlswrite([SavePath filesep 'SummaryParamTool.xls'],Notes,'Summary_Centerline',SaveLoc);
 set(handles.NoteBox,'String',' ');
 set(handles.TextUpdate,'String','Done Saving Note');drawnow;
 
