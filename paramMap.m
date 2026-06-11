@@ -825,10 +825,13 @@ view(fig.CurrentAxes,[90,0])
 % function to specify points to mask in the main GUI based on logical
 % array given as argument
 function maskangiogrambranches(logpoints, handles)
-global area_val branchList hscatter PI_val RI_val dcm_obj hDataTip
+global area_val branchList hscatter PI_val RI_val hDataTip
 global velMean_val diam_val maxVel_val flowPerHeartCycle_val StdvFromMean
 
-[ idxCursor, ~ ] = getChosenBranch(dcm_obj, branchList, handles);
+[ idxCursor, ~ ] = getChosenBranch(handles);
+if isempty(idxCursor)
+    return
+end
 
 hscatter.XData = branchList(logpoints,1);
 hscatter.YData = branchList(logpoints,2);
@@ -963,33 +966,43 @@ if ~isempty(info_struct)
     visboundaries(hfull.TRcross,Maskcross,'LineWidth',1)
 end 
     
-function [ pindex, idxbr ] = getChosenBranch(d_obj, brList, handles)
-info_struct = getCursorInfo(d_obj);
+function [ pindex, idxbr ] = getChosenBranch(handles)
+
+% ugh, ok
+global dcm_obj branchList hDataTip
+
+pindex = [];
+idxbr = [];
+
+info_struct = getCursorInfo(dcm_obj);
 if isempty(info_struct)
-    msg = 'Please put the angiogram figure in DataTip mode';
+    msg = 'select DataTip mode and click on a branch';
     if isstruct(handles)
         set(handles.TextUpdate,'String',msg);
         drawnow;
     else
         disp(msg)
     end
-    pindex = [];
-    idxbr = [];
     return
 end
 % TODO debug this to decide how we make sure we only get one branch
 ptList = [info_struct.Position];
-ptList = reshape(ptList,[3,numel(ptList)/3])';
-pindex = zeros(size(ptList,1),1);
+d = size(ptList);
+if d(1) ~= 1 || d(2) ~= 3
+    disp('Wrong number of points in struct returned from getCursorInfo')
+    return
+end
 
 % Find cursor point in branchList
-for n = 1:size(ptList,1)
-    xIdx = find(brList(:,1) == ptList(n,1));
-    yIdx = find(brList(xIdx,2) == ptList(n,2));
-    zIdx = find(brList(xIdx(yIdx),3) == ptList(n,3));
-    pindex(n) = xIdx(yIdx(zIdx));
+xIdx = find(branchList(:,1) == ptList(1));
+yIdx = find(branchList(xIdx,2) == ptList(2));
+zIdx = find(branchList(xIdx(yIdx),3) == ptList(3));
+pindex = xIdx(yIdx(zIdx));
+idxbr = branchList(pindex,4);
+
+if ~isgraphics(hDataTip)
+    hDataTip = dcm_obj.createDatatip(info_struct.Target);
 end
-idxbr = brList(pindex,4);
 % for debugging
 % disp('pindex list:')
 % disp(pindex)
@@ -1003,7 +1016,7 @@ global segmentFull MAGcrossection vTimeFrameave fig timeres nframes
 global VplanesAllx VplanesAlly VplanesAllz
 
 % Get associated branch number of full branch
-[ pindex, bnum ] = getChosenBranch(dcm_obj, branchList, 0);
+[ pindex, bnum ] = getChosenBranch(0);
 Logical_branch = branchList(:,4) ~= bnum;
 index_range = pindex-2:pindex+2; % OUTPUT +/- points
 index_range(index_range<1) = []; %removes outliers and other branch points
@@ -1142,23 +1155,8 @@ treeflow = flowPulsatile_val(logTreePoints,:);
 % treeDistances 1-d or but implied 2-d in the following line, modified here
 % to be 1-d (not tested)
 treedistmm = res*treeDistances(logTreePoints); % convert distances pixels to mm
-lentree = sum(logTreePoints); % is a 1xn or nx1 of logicals
 
-% need to normalize flow
-for ii = 1:lentree
-    v = treeflow(ii,:);
-    [sig, mu] = std(v);
-    treeflow(ii,:) = (v - mu)/sig;
-end
-
-initguess = [ zeros(1,nframes), 5 ]; % initial is zero waveform, pwv = 5 m/s
-
-% need to "recalculate" costfun on each call because the values, not
-% the variables, become part of costfun ???
-costfun = @(inParams)PWVest3_share(inParams,treedistmm,treeflow,timeres,ones(size(treedistmm)));
-% timeres in ms; mm/ms should be the same as m/s
-options = optimset('Display','iter', 'TolCon', 1e-7, 'TolX', 1e-7, 'TolFun', 1e-7,'DiffMinChange', 1e-3);
-[params,exitflag,output] = fminunc(costfun, initguess, options);
+[params,exitflag,output] = minandsavestats(treeflow,treedistmm,nframes,timeres);
 set(handles.TextUpdate, 'String', sprintf('PWV = %.3f m/sec', params(end)));
 
 
@@ -1224,7 +1222,10 @@ function AddBranch_Callback(hObject, eventdata, handles)
 
 global dcm_obj branchList logTreePoints branchesInTree treeDistances
 
-[ idxCursor, idbranch ] = getChosenBranch(dcm_obj, branchList, handles);
+[ idxCursor, idbranch ] = getChosenBranch(handles);
+if isempty(idbranch)
+    return
+end
 if testBranchInTree(idbranch)
     m = sprintf('branch %d is already included in the tree',idbranch);
     set(handles.TextUpdate,'String',m);
@@ -1357,7 +1358,7 @@ function TrimBranch_Callback(hObject, eventdata, handles)
 
 global dcm_obj branchList logTreePoints
 
-[ idxCursor, idbranch ] = getChosenBranch(dcm_obj, branchList, handles);
+[ idxCursor, idbranch ] = getChosenBranch(handles);
 if ~testBranchInTree(idbranch)
     set(handles.TextUpdate,'String',...
         'Cannot trim a branch that has not been added');
@@ -1387,9 +1388,12 @@ maskangiogrambranches(logTreePoints, handles)
 
 function walkcallbacks(isign, handles)
 
-global dcm_obj branchList hDataTip
+global branchList hDataTip
 
-[ idxCursor, ~ ] = getChosenBranch(dcm_obj, branchList, handles);
+[ idxCursor, ~ ] = getChosenBranch(handles);
+if isempty(idxCursor)
+    return
+end
 idbr = branchList(idxCursor,4);
 idxCursor = idxCursor + isign;
 if branchList(idxCursor,4) ~= idbr
