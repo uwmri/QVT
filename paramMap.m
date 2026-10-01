@@ -1156,8 +1156,10 @@ treeflow = flowPulsatile_val(logTreePoints,:);
 % to be 1-d (not tested)
 treedistmm = res*treeDistances(logTreePoints); % convert distances pixels to mm
 
-[params,exitflag,output] = minandsavestats(treeflow,treedistmm,nframes,timeres);
-set(handles.TextUpdate, 'String', sprintf('PWV = %.3f m/sec', params(end)));
+processFlow(treeflow,treedistmm,timeres)
+
+% [params,exitflag,output] = minandsavestats(treeflow,treedistmm,nframes,timeres);
+% set(handles.TextUpdate, 'String', sprintf('PWV = %.3f m/sec', params(end)));
 
 
 function jdatastruct = junctionCalc(rnew, isgnnew, rold, dold, isgnold)
